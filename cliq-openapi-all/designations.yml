@@ -1,0 +1,654 @@
+openapi: 3.0.0
+info:
+  title: Designations
+  description: >
+   The term "Designation" on Cliq refers to the job title or position that a user holds within an organization. Examples include Developers, Sales Executives, Customer Support Managers, etc.<br><br>
+   <b>Note:</b> If your organization is integrated with Zoho People, none of the Designation APIs will function properly.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: designations
+    description: 'Designations Module'
+
+paths:
+  /designations:
+    post:
+      summary: Create a Designation
+      description: |
+        Use this API to create a designation. This API will not return success if your Cliq organization is integrated with Zoho People.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.<br><br>
+        <h4>Error Codes</h4>
+        <h4>Error Codes</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your designations.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>User who is not an organization admin tries to create a designation.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>User does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>designation_already_exist</b></td>
+              <td>Designation with the given name already exists.</td>
+            </tr>
+            <tr>
+              <td><b>designation_create_failed</b></td>
+              <td>Internal server error occurred.</td>
+            </tr>
+          </tbody>
+        </table>
+
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDesignationRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateDesignationResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Designations.CREATE
+
+    get:
+      summary: Get Designation Details
+      description: |
+        Use this API to get the list of all designations in your organization.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: >
+            The total number of designations to be fetched. If limit is not specified, a maximum of 25 designations will be returned for a request.
+          schema:
+            type: string
+
+        - name: search
+          in: query
+          required: false
+          description: >
+            A string to search for designations by name.
+          schema:
+            type: string
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/DesignationListResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Designations.READ
+
+  /designations/{DESIGNATION_ID}:
+    get:  
+      summary: Get Designation Details
+      description: |
+        Use this API to get details of a designation.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier of the department.
+          schema:
+            type: string  
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                   $ref: '#/components/schemas/CreateDesignationResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Designations.READ
+
+    put:
+      summary: Update Designation
+      description: |
+        Use this API to update a designation's title. This API will not return success if your Cliq Organization is integrated with Zoho People.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+        <h4>Error Codes</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your departments.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>A user who is not an organization admin attempted to create a department.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>The user does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_already_exist</b></td>
+              <td>A department with the given name already exists.</td>
+            </tr>
+            <tr>
+              <td><b>department_lead_invalid</b></td>
+              <td>The department lead’s user ID is invalid or the user is not part of your Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_not_exist</b></td>
+              <td>The specified parent department ID or department ID is invalid.</td>
+            </tr>
+            <tr>
+              <td><b>department_cyclic_loop</b></td>
+              <td>A child department ID is being assigned as its own parent, causing a cyclic reference.</td>
+            </tr>
+            <tr>
+              <td><b>department_edit_failed</b></td>
+              <td>An internal server error occurred while editing the department.</td>
+            </tr>
+          </tbody>
+        </table>
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier of the designation which needs to be modified.
+          schema:
+            type: string  
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDesignationRequest'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                 $ref: '#/components/schemas/CreateDesignationResponse'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Designations.UPDATE
+
+
+    delete:
+      summary: Delete Department
+      description: |
+        Use this API to delete a department.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+            <h4>Error Codes</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your departments.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>User who is not an organization admin tries to create a department.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>User does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_not_exist</b></td>
+              <td>Parent department ID is not valid or given department ID is not valid.</td>
+            </tr>
+            <tr>
+              <td><b>department_base_dept_delete_not_allowed</b></td>
+              <td>Parent department cannot be deleted.</td>
+            </tr>
+            <tr>
+              <td><b>department_delete_failed</b></td>
+              <td>Internal server error occurred.</td>
+            </tr>
+          </tbody>
+        </table>
+
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier of the department which needs to be deleted.
+          schema:
+            type: string  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Designations.DELETE
+
+  /designations/{DESIGNATION_ID}/members:
+    get:
+      summary: Get Designation Members
+      description: |
+        Use this API to get members who are associated with a designation.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+         
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+        <h3>Error Codes</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>designation_not_exist</b></td>
+              <td>The provided Designation ID does not exist.</td>
+            </tr>
+          </tbody>
+        </table>
+      parameters:
+
+        - name: DESIGNATION_ID
+          in: path
+          required: true
+          description: Unique identifier of the designation
+          schema:
+            type: string  
+
+        - name: limit
+          in: query
+          required: true
+          description: Define the maximum number of members to be fetched in one request.
+          schema:
+            type: string  
+
+        - name: next_token
+          in: query
+          required: false
+          description: Use this parameter to fetch the next set of designations.
+          schema:
+            type: string        
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDesignationMembersResponse'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Designations.READ
+
+    post:
+      summary: Add Designation Members
+      description: |
+        Use this API to get members who are associated with a designation.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+         
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+        <h3>Error Codes</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your designations.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>User who is not an organization admin tries to create a designation.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>User does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>designation_not_exist</b></td>
+              <td>The provided Designation ID does not exist.</td>
+            </tr>
+          </tbody>
+        </table>
+
+
+      parameters:
+
+        - name: DESIGNATION_ID
+          in: path
+          required: true
+          description: Unique identifier of the designation for which list of members need to be associated.
+          schema:
+            type: string  
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignationUserAssociationRequest'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Designations.UPDATE
+
+    delete:
+      summary: Delete Designation Members
+      description: |
+        Use this API to delete members associated with a designation.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+         
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+        <h3>Error Codes</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your designations.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>User who is not an organization admin tries to create a designation.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>User does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>designation_not_exist</b></td>
+              <td>The provided Designation ID does not exist.</td>
+            </tr>
+          </tbody>
+        </table>
+
+      parameters:
+
+        - name: DESIGNATION_ID
+          in: path
+          required: true
+          description: Unique identifier of the designation whose associated members are to be removed.
+
+          schema:
+            type: string  
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignationUserDeletionRequest'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Designations.DELETE
+
+
+components:
+  schemas:
+
+    no-response:
+      type: object
+      properties:
+        Response Code:
+          type: string
+          example: "204 No response"
+
+    CreateDesignationRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 30
+          description: "Name of the designation you're creating. Maximum allowed characters: 30."
+          example: Marketing Executive
+        user_ids:
+          type: array
+          description: IDs of the users who will be associated with the designation.
+          items:
+            type: string
+          example:
+            - "54218474"
+
+    CreateDesignationResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Marketing Executive
+            id:
+              type: string
+              example: "1901318000002280003"
+        
+    DesignationListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: Leadership Staff
+              id:
+                type: string
+                example: "1901318000001072003"
+      example:
+        data:
+          - name: Leadership Staff
+            id: "1901318000001072003"
+          - name: Web Developer
+            id: "1901318000001072007"
+          - name: Content Writer
+            id: "1901318000001072013"
+          - name: UX Designer
+            id: "1901318000001072019"
+          - name: iOS Developer
+            id: "1901318000001072025"
+
+    UpdateDesignationRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Denotes the designation title.
+          items:
+            type: string
+          example:
+            - "Leaders"
+    
+    UserDesignationMembersResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              email_id:
+                type: string
+                example: micheller@zylker.com
+              zuid:
+                type: string
+                example: "54218474"
+              zoid:
+                type: string
+                example: "54107592"
+              display_name:
+                type: string
+                example: Michelle
+              name:
+                type: string
+                example: Michelle Rodrigues
+              organization_id:
+                type: string
+                example: "631836344"
+              id:
+                type: string
+                example: "54218474"
+
+
+    DesignationUserAssociationRequest:
+      type: object
+      required:
+        - user_ids
+      properties:
+        user_ids:
+          type: array
+          description: List of user IDs to be associated with the designation.
+          items:
+            type: string
+            example: "1234567"
+      example:
+        user_ids:
+          - "1234567"
+          - "9876543"
+
+    DesignationUserDeletionRequest:
+      type: object
+      required:
+        - user_ids
+      properties:
+        user_ids:
+          type: array
+          description: List of user IDs to be removed from the designation.
+          items:
+            type: string
+            example: "1234567"
+      example:
+        user_ids:
+          - "1234567"
+          - "9876543"
+ 
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Designations.CREATE: Add Designations
+            ZohoCliq.Designations.UPDATE: Update Designations
+            ZohoCliq.Designations.DELETE: Delete Designations
+            ZohoCliq.Designations.READ: Read Designations

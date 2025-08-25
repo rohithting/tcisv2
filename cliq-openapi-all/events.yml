@@ -1,0 +1,886 @@
+openapi: 3.0.0
+info:
+  title: Events
+  description: >
+    An event is any occurrence that is scheduled for a specific time. This can range from a team meeting to a company-wide conference. You can create events, invite others, set reminders, and track invitees from your Cliq Home. Cliq Events syncs with your calendar to keep you updated at all times.<br><br>
+    Using Cliq event APIs, you can create, retrieve, update, manage, and delete events.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: events
+    description: 'Events Module'
+
+paths:
+  /calendars:
+    get:
+      summary: Get Calendars
+      description: >
+        Use this API to retrieve a comprehensive list of all calendars associated with a user.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: include_hidden_calendars
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Choose whether to display the hidden calendars or not.
+              
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-calendars-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.CalendarEvents.ALL
+
+  /events:
+    get:      
+      summary: Get Events
+      description: >
+        Use this API to get the list of all your events scheduled within the next 31 days.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: The start of the time interval from when you want to retrieve the events. From time should be passed in milliseconds.
+
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: The end of the time interval from when you want to retrieve the events. To time should be passed in milliseconds.  
+
+        - name: include_hidden_calendars
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Choose whether to display events from hidden calendars or not.
+
+        - name: include_disabled_calendar
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Choose whether to display events from disabled calendars or not.    
+
+        - name: ignore_declined_events
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Choose whether to ignore declined events or not.  
+
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: A keyword or phrase used to filter events based on search text. Matches are performed on the titles of events.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-events-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.CalendarEvents.ALL
+            - ZohoCalendar.calendar.ALL
+            - ZohoCalendar.event.ALL
+
+
+
+    post:
+      summary: Create an Event
+      description: >
+        Use this API to create an event.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-event-request-body'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-events-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.CalendarEvents.ALL
+            - ZohoCalendar.calendar.ALL
+            - ZohoCalendar.event.ALL   
+
+  /events/{EVENT_ID}:
+    get:
+      summary: Get Event Details
+      description: >
+        Use this API to get the event details of a specific event from the user's calendar.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: EVENT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: To retrieve the details of a specific event using its unique identifier.
+
+        - name: calendar_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: To retrieve the details of an event from a specific calendar using its calendar UID (Calendar unique identifier).
+
+        - name: recurrence_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: To retrieve the details of a specific occurrence of a recurring event.  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-events-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.CalendarEvents.ALL
+            - ZohoCalendar.calendar.ALL
+            - ZohoCalendar.event.ALL   
+
+    put:
+      summary: Edit an Event
+      description: >
+        Use this API to edit an event.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: EVENT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: To edit the details of a specific event using its unique identifier.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/edit-event-request-body'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-events-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.CalendarEvents.ALL
+            - ZohoCalendar.calendar.ALL
+            - ZohoCalendar.event.ALL       
+    delete:
+      summary: Delete an Event
+      description: >
+        Use this API to delete an event.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: EVENT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: To specify the event to be deleted.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/delete-event-request-body'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.CalendarEvents.ALL
+            - ZohoCalendar.calendar.ALL
+            - ZohoCalendar.event.ALL  
+
+  /events/{EVENT_ID}/statuses/{STATUS}:
+    put:
+      summary: Update an Event Status
+      description: >
+        Use this API to update your status for an event ( RSVP ).
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: EVENT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: To specify the event to be updated.
+
+        - name: STATUS
+          in: path
+          required: true
+          schema:
+            type: string
+          description: >
+            To update the attendance status for the event.
+            <br>Allowed values : 
+              <ul>
+                      <li><b>accepted</b> – The attendee has confirmed participation.</li>
+                      <li><b>tentative</b> – The attendee may attend but has not confirmed.</li>
+                      <li><b>declined</b> – The attendee has declined the invitation.</li>
+                      <li><b>yet_to_respond</b> – The attendee has not yet responded to the invitation.</li>
+              </ul>
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-event-status-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.CalendarEvents.ALL
+            - ZohoCalendar.calendar.ALL
+            - ZohoCalendar.event.ALL    
+
+  /events/attachments:
+    post:
+      summary: Upload Attachments to Event Calendar
+      description:  >
+        Use this API to upload an attachment in your calendar to attach it to events.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/upload-attachment-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.CalendarEvents.ALL
+            - ZohoCalendar.calendar.ALL
+            - ZohoCalendar.event.ALL   
+
+components:
+  schemas:
+    no-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "204 No response"
+    upload-attachment-response:
+      type: object
+      properties:
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              preview:
+                type: boolean
+                example: true
+              fileName:
+                type: string
+                example: Screenshot from 2022-11-23 12-36-52.png
+              size:
+                type: integer
+                example: 298643
+              contentType:
+                type: string
+                example: image/png
+              fileId:
+                type: string
+                example: "1669355207679000001"
+        
+
+    create-event-request-body:
+      type: object
+      required:
+        - title
+        - start_time
+        - end_time
+        - timezone
+      properties:
+        title:
+          type: string
+          description: The title of the event to be added.
+          example: Zylker Marketing Forum
+
+        start_time:
+          type: string
+          description: The start date and time of the event in milliseconds.(<b>ISO 8601 basic time string</b>)
+          example: 1738828560000
+
+        end_time:
+          type: string
+          description: The end date and time of the event in milliseconds.(<b>ISO 8601 basic time string</b>)
+          example: 1738832160000 
+
+        timezone:
+          type: string
+          description: 'The timezone in which the event is to be created.(<b>ISO 8601 basic time string</b>)'
+          example: Asia/Kolkata
+
+        calendar_id:
+          type: string
+          description: "A unique identifier for the calendar in which a new event is to be created.<br>If not specified, the event will be added to the user's default calendar."
+          example: "NDg4MTc3NTAwMDAwMDAwOTAwM3wzMzMyY2NjMQ"
+
+        location:
+          type: string
+          description: "Location details for the event.<br>Maximum length : 255 characters."
+          example: "Conference Room 21"
+
+        description:
+          type: string
+          description: "The description of the event, providing additional details for the attendees.<br>Maximum length : 10000 characters."
+          example: "Join the Zylker Marketing Forum to discuss trends."
+
+        attendees:
+          type: array
+          description: "Attendee details for the event, including their email IDs."
+          example: 
+            - ryan.west@zylker.com
+            - olivia.palmer@zylker.com
+
+        type:
+          type: string
+          description: |
+            Specifies the type of event that needs to be scheduled.<br>Allowed values :
+            <ul>
+            <li><b>normal_event</b> : To schedule a face-to-face meeting.</li>
+            <li><b>event_management</b> :  To schedule a face-to-face meeting with Zia's assistance. Zia helps to organize the event by sending reminders and notifying attendees through a dedicated group chat.</li>
+            <li><b>audio_conference</b> :  Schedules an event as an audio conference.</li>
+            <li><b>video_conference</b> : Schedules an event as an video conference.</li>
+            </ul>
+
+        reminders:
+            type: array
+            description: |
+              Specifies the type of reminders to be set for the event.
+              Each reminder includes a type and a time offset in minutes before the event.<br>
+              <ul>
+              <li><b>type</b> : Specifies the type of reminder.
+                    <ul>
+                      <li><b>email</b>: Sends an email reminder.</li>
+                      <li><b>popup</b>: Triggers a popup notification.</li>
+                      <li><b>notification</b>: Sends an in-app notification.</li>
+                    </ul>
+              </li>
+              <br>
+              <li><b>minutes</b> : Specifies the time before the event (in minutes) when the reminder should trigger.</li>
+              </ul>
+              Example : "reminders":[{"type": "email", "minutes": 30}, {"type": "popup", "minutes": 15}]
+            items:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [email, popup, notification]
+                minutes:
+                  type: integer
+              required:
+                - type
+                - minutes
+            example:
+              reminders:
+                - type: email
+                  minutes: 30
+                - type: popup
+                  minutes: 15
+
+        attachment_ids:
+          type: array
+          description: |
+            <ul>
+              <li>Allows files to be attached to an event by including their unique file IDs in a comma-separated format.</li>
+              <li>The file IDs correspond to files previously uploaded and retrievable through the Upload Attachments to Event Calendar API.</li>
+            </ul>
+          example:
+            - 284148000000107002
+
+    edit-event-request-body:
+      type: object
+      required:
+        - title
+        - start_time
+        - end_time
+        - timezone
+      properties:
+        title:
+          type: string
+          description: The title of the event to be edited.
+          example: Zylker Marketing Forum
+
+        start_time:
+          type: string
+          description: The start date and time of the event in milliseconds.(<b>ISO 8601 basic time string</b>)
+          example: 1738828560000
+
+        end_time:
+          type: string
+          description: The end date and time of the event in milliseconds.(<b>ISO 8601 basic time string</b>)
+          example: 1738832160000
+
+        timezone:
+          type: string
+          description: 'The timezone in which the event is to be edited.(<b>ISO 8601 basic time string</b>)'
+          example: Asia/Kolkata
+
+        calendar_id:
+          type: string
+          description: "A unique identifier for the calendar in which the event is to be edited.<br>If not specified, the event will be added to the user's default calendar."
+          example: "NDg4MTc3NTAwMDAwMDAwOTAwM3wzMzMyY2NjMQ"
+
+        location:
+          type: string
+          description: "Location details for the event.<br>Maximum length : 255 characters."
+          maxLength: 255
+          example: "Conference Room 21"
+
+        description:
+          type: string
+          description: "The description of the event, providing additional details for the attendees.<br>Maximum length : 10000 characters."
+          maxLength: 10000
+          example: "Join the Zylker Marketing Forum to discuss trends."
+
+        attendees:
+          type: array
+          description: |
+            Attendee details for the event.
+            <br>Example: "attendees":[{"status": "accepted", "email":"ryan.west@zylker.com"},{"status":"declined", "email":"olivia.palmer@zylker.com"}]
+          items:
+            type: object
+            properties:
+              email:
+                type: string
+                description:  Specifies the email address of the attendee.
+              status:
+                type: string
+                description: |
+                    To update the attendance status of an attendee for an event.<br>Allowed values:
+                    <ul>
+                      <li><b>accepted</b> – The attendee has confirmed participation.</li>
+                      <li><b>tentative</b> – The attendee may attend but has not confirmed.</li>
+                      <li><b>declined</b> – The attendee has declined the invitation.</li>
+                      <li><b>yet_to_respond</b> – The attendee has not yet responded to the invitation.</li>
+                    </ul>
+
+                enum: [accepted, tentative, declined, yet_to_respond]
+
+        type:
+          type: string
+          description: |
+            Specifies the type of event that needs to be scheduled.<br>Allowed values :
+            <ul>
+            <li><b>normal_event</b> : To schedule a face-to-face meeting.</li>
+            <li><b>event_management</b> :  To schedule a face-to-face meeting with Zia's assistance. Zia helps to organize the event by sending reminders and notifying attendees through a dedicated group chat.</li>
+            <li><b>audio_conference</b> :  Schedules an event as an audio conference.</li>
+            <li><b>video_conference</b> : Schedules an event as an video conference.</li>
+            </ul>
+          enum:
+            - normal_event
+            - event_management
+            - audio_conference
+            - video_conference
+
+        reminders:
+          type: array
+          description: |
+            Specifies the type of reminders to be set for the event.
+            Each reminder includes a type and a time offset in minutes before the event.<br>
+            <ul>
+            <li><b>type</b> : Specifies the type of reminder.
+                  <ul>
+                    <li><b>email</b>: Sends an email reminder.</li>
+                    <li><b>popup</b>: Triggers a popup notification.</li>
+                    <li><b>notification</b>: Sends an in-app notification.</li>
+                  </ul>
+            </li>
+            <br>
+            <li><b>minutes</b> : Specifies the time before the event (in minutes) when the reminder should trigger.</li>
+            </ul>
+            Example : "reminders":[{"type": "email", "minutes": 30}, {"type": "popup", "minutes": 15}]
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [email, popup, notification]
+              minutes:
+                type: integer
+            required:
+              - type
+              - minutes
+          example:
+            reminders:
+              - type: email
+                minutes: 30
+              - type: popup
+                minutes: 15
+
+        attachment_ids:
+          type: array
+          description: |
+            <ul>
+              <li>Allows files to be attached to an event by including their unique file IDs in a comma-separated format.</li>
+              <li>The file IDs correspond to files previously uploaded and retrievable through the Upload Attachments to Event Calendar API.</li>
+            </ul>
+          example:
+            - 284148000000107002
+
+
+    delete-event-request-body:
+      type: object
+      required:
+        - calendar_id
+        - edit_tag
+      properties:
+        calendar_id:
+          type: string
+          description: A unique identifier for the calendar in which the event is to be deleted.
+          example: c3NTAwMNDg4MTDAwMDAwOTMyY2NjMQ==
+        edit_tag:
+          type: integer
+          description: |
+            <ul>
+              <li>A unique identifier for a specific version of a resource on a server.</li>
+              <li>It is used to determine if the resource has changed between delete/update requests.</li>
+              <li>Obtain latest edit_tag from Get Event Details API.</li>
+            </ul>
+          example: 1738933200000
+
+    update-event-status-response:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            uid:
+              type: string
+              example: ef3d579687r42832934hc63d56@zoho.com
+            etag:
+              type: string
+              example: "2838850064766"
+            message:
+              type: string
+              example: Status Updated.
+            attendees:
+              type: array
+              items:
+                type: object
+                properties:
+                  zuid:
+                    type: string
+                    example: "89412567"
+                  status:
+                    type: string
+                    example: ACCEPTED
+                  email:
+                    type: string
+                    example: ryan.west@zylker.com
+                  isapi:
+                    type: boolean
+                    example: true
+
+
+    get-events-response:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventItem'
+
+
+    EventItem:
+      type: object
+      properties:
+        location:
+          type: string
+          example: "Conference Room 21"
+        entity_id:
+          type: string
+          example: "47f78d99-049f-4e313-08ef-6b588976b4c4"
+        is_big_chat_event:
+          type: boolean
+          example: false
+        type:
+          type: string
+          example: "video_conference"
+        isallday:
+          type: boolean
+          example: false
+        creator:
+          $ref: '#/components/schemas/EventPerson'
+        entity_type:
+          type: integer
+          example: 8
+        end_time:
+          type: integer
+          example: 1738942200000
+        attendees:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventAttendee'
+        edit_tag:
+          type: string
+          example: "1738835150914"
+        start_time:
+          type: integer
+          example: 1738938600000
+        id:
+          type: string
+          example: "427812df9891223aca537f0e8e7ad2a7c@zoho.com"
+        meeting_link:
+          type: string
+          example: "https://cliq.zoho.com/meeting/1BK4IK987W6W"
+        timezone:
+          type: string
+          example: "Asia/Kolkata"
+        description:
+          type: string
+          example: "Join the Zylker Marketing Forum to discuss trends."
+        calendar_id:
+          type: string
+          example: "NDg4MTc3NTAwMDAwMDAwOTAwM3wzMzMyY2NjMQ=="
+        organizer:
+          $ref: '#/components/schemas/EventPerson'
+        title:
+          type: string
+          example: "Zylker Marketing Forum"
+        role:
+          type: string
+          example: "organizer"
+
+    EventPerson:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Scott Fisher"
+        email:
+          type: string
+          example: "scott.fisher@zylker.com"
+        id:
+          type: string
+          example: "9087651"
+
+    EventAttendee:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "accepted"
+        name:
+          type: string
+          example: "Ryan West"
+        email:
+          type: string
+          example: "ryan.west@zylker.com"
+        id:
+          type: string
+          example: "89472161"
+
+
+    get-calendars-response:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              reminders:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    minutes:
+                      type: string
+                      example: "-15"
+                    action:
+                      type: string
+                      example: "email"
+              color:
+                type: string
+                example: "#8cbf40"
+              timezone:
+                type: string
+                example: "Asia/Calcutta"
+              textcolor:
+                type: string
+                example: "#FFFFFF"
+              description:
+                type: string
+                example: ""
+              privilege:
+                type: string
+                example: "owner"
+              type:
+                type: integer
+                example: 0
+              calemptiedtime:
+                type: string
+                example: "2023-03-16T05:27:33Z"
+              uid:
+                type: string
+                example: "1683be4ab6c74d2ab02e6450a0b34d4a"
+              canSendMail:
+                type: boolean
+                example: true
+              modifiedtime:
+                type: integer
+                example: 1663320706496
+              alarm:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    action:
+                      type: string
+                      example: "email"
+                    trigger:
+                      type: string
+                      example: "-900000"
+              isdefault:
+                type: boolean
+                example: true
+              calendar_modifiedtime:
+                type: integer
+                example: 1663320706496
+              id:
+                type: string
+                example: "310935000000002003"
+              order:
+                type: integer
+                example: 0
+              lastmodifiedtime:
+                type: string
+                example: "2023-03-16T09:29:45Z"
+              owner:
+                type: string
+                example: "70421274"
+              visibility:
+                type: boolean
+                example: true
+              include_infreebusy:
+                type: boolean
+                example: true
+              createdtime:
+                type: integer
+                example: 1663320706496
+              calendar_createdtime:
+                type: integer
+                example: 1663320706496
+              name:
+                type: string
+                example: "User"
+              ctag:
+                type: integer
+                example: 1678958985948
+              category:
+                type: string
+                example: "own"
+              status:
+                type: boolean
+                example: true
+              caltype:
+                type: string
+                example: "own"
+
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.CalendarEvents.ALL: Create , Read , Update and Manage events

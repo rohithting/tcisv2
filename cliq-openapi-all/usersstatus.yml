@@ -1,0 +1,378 @@
+openapi: 3.0.0
+info:
+  title: User Status
+  description: >
+    Use the user status API to create, retrieve, update, or delete your status on Cliq. Additionally, you can check the status of another user by providing their User ID.<br><br>
+    For more information about user status in Cliq, please refer to our help guide. 
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: usersstatus
+    description: 'User Status Module'
+
+paths:
+  /statuses:
+    post:
+      summary: Add a new status
+      description: |
+        Use this API to add a new status in Cliq.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPresenceUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPresenceUpdateResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.CREATE
+
+    get:
+      summary: Retrieve all statuses
+      description: |
+        Use this API to retrieve the list of all your statuses in Cliq.<br><br>
+        <b>Note</b>: This API does not return default status. You'll get the list of all the custom statuses you've set on Cliq.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/UserPresenceMessagesResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Profile.READ
+
+  /statuses/ephemeral:
+    put:
+      summary: Add a transient status
+      description: |
+        Use this API to add a temporary status in Cliq.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemporaryStatusUpdateRequest'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/empty-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.UPDATE
+
+    delete:
+      summary: Delete transient status
+      description: |
+        Use this API to delete a status in Cliq.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/empty-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.DELETE
+  
+  /statuses/current:
+    get:
+      summary: Retrieve current status
+      description: |
+        Fetch your current status in Cliq.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPresenceUpdateResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.READ
+
+  /users/{USER_ID}:
+    get:
+      summary: Retrieve a user's status
+      description: |
+        Fetch a user's current status in Cliq.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+          - name: USER_ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the user whose current status needs to be retrieved.
+
+          - name: fields
+            in: query
+            required: true
+            schema:
+              type: string
+            description: To identify the user field that indicates the current status of the specified user.
+            example: "chat_status"
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPresenceUpdateResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Users.READ
+
+  /statuses/{STATUS_ID}/set:
+    put:
+      summary: Update current status
+      description: |
+        Use these APIs to update a given status ID as the current status. Retrieve the status ID using Retrieve All Statuses API.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      parameters:
+          - name: STATUS_ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the status which needs to be set as current status.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStatusSetResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.UPDATE
+
+  /statuses/{STATUS_ID}:
+    delete:
+      summary: Delete status
+      description: |
+        Use this API to delete a status in Cliq.<br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      parameters:
+          - name: STATUS_ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the status which needs to be deleted.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/empty-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.DELETE
+
+components:
+  schemas:
+
+    empty-response:
+      type: object
+      properties:
+        Response Code:
+          type: string
+          example: "204 No response"
+
+    UserPresenceUpdateRequest:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: >
+            Denotes the status in Cliq.  
+            <ul>
+              <li><b>busy</b> – Sets the user's status to Busy.</li>
+              <li><b>available</b> – Sets the user's status to Available.</li>
+              <li><b>invisible</b> – Hides the user's online presence.</li>
+            </ul>
+          enum:
+            - busy
+            - available
+            - invisible
+          example: busy
+        message:
+          type: string
+          description: Denotes the custom status message in Cliq.
+          example: In a meeting, will respond soon!
+
+    TemporaryStatusUpdateRequest:
+      type: object
+      required:
+        - code
+        - message
+        - expiry
+      properties:
+        code:
+          type: string
+          description: >
+            Denotes the status in Cliq.  
+            <ul>
+              <li><b>busy</b> – Sets the user's status to Busy.</li>
+              <li><b>available</b> – Sets the user's status to Available.</li>
+              <li><b>invisible</b> – Hides the user's online presence.</li>
+            </ul>
+          enum:
+            - busy
+            - available
+            - invisible
+          example: busy
+        message:
+          type: string
+          description: Denotes the custom status message in Cliq.
+          example: In a meeting, will respond soon!   
+        expiry:
+          type: integer
+          description: Denotes the time till which the transient status is active.
+          example: 1641883476276
+
+    UserPresenceUpdateResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            code:
+              type: string
+              example: busy
+            message:
+              type: string
+              example: In a Meeting
+            id:
+              type: integer
+              example: 1775998000034476000
+
+    UserPresenceMessagesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Arise awake and stop not till the goal is reached
+              id:
+                type: integer
+                example: 1775998000028408800
+          example:
+            - message: Arise awake and stop not till the goal is reached
+              id: 1775998000028408800
+            - message: Coffee break
+              id: 1775998000030383900
+            - message: Opportunities don't happen. You create them.
+              id: 1775998000034330400
+            - message: All progress takes place outside the comfort zone
+              id: 1775998000034476000
+
+    UserStatusSetResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          example: /api/v2/statuses/{status_id}/set
+        type:
+          type: string
+          example: status_message
+        data:
+          type: object
+          properties:
+            code:
+              type: string
+              example: available
+            message:
+              type: string
+              example: "11"
+            id:
+              type: string
+              example: "45874000000147003"
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+             ZohoCliq.Users.CREATE: Add Users
+             ZohoCliq.Profile.READ: Read User Profile
+             ZohoCliq.Profile.CREATe: Create User Profile
+             ZohoCliq.Profile.UPDATE: Update User Profile
+             ZohoCliq.Profile.DELETE: Delete User Profile

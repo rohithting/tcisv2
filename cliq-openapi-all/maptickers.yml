@@ -1,0 +1,256 @@
+openapi: 3.0.0
+info:
+  title: Widget Map Tickers
+  description: >
+    Tickers are pointers for the map view. Using tickers, you can track and monitor the movement or location of objects or individuals on a map in real-time. They can be updated instantaneously via REST API, which will be transmitted to users who are actively viewing the map. Live update works on a subscription model where users are updated for 10 minutes counting from the time they open the map view tab.
+    <br><br>
+    <b>Note</b> : Ticker updates should be stored by the developer to send the updated data in widget response.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: maptickers
+    description: 'Map Tickers Module'
+
+paths:
+  /widgets/{WIDGET_ID}/maps/{MAP_ID} :
+    put:
+      summary: Add/Update a ticker
+      description: >
+        Use this API to add a new ticker/update a ticker in the map view in widgets.<br><br>
+        <b>Note</b> : You can get the ticker endpoint from the widget preview page (Profile -> Bots & tools -> Widgets -> Required widget)
+        <br><br>
+        <b>Threshold limit</b>: 100 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: WIDGET_ID
+          in: path
+          required: true
+          description: Unique identifier of the widget.
+          schema:
+            type: string
+
+        - name: MAP_ID
+          in: path
+          required: true
+          description: Unique identifier of the map within the widget.
+          schema:
+            type: string
+
+        - name: appkey
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            To specify updating a ticker that belongs to a widget bundled by an extension.    
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MapTickerRequest'
+
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tickers-response'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Applications.UPDATE
+    
+    delete:
+      summary: Delete a ticker
+      description: >
+        Use this API to delete an existing ticker in the map view in widgets.
+        <br><br>
+        <b>Threshold limit</b>: 100 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: WIDGET_ID
+          in: path
+          required: true
+          description: Unique identifier of the widget.
+          schema:
+            type: string
+
+        - name: MAP_ID
+          in: path
+          required: true
+          description: Unique identifier of the map within the widget.
+          schema:
+            type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteMapTickerRequest'
+
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Applications.UPDATE
+
+
+
+components:
+  schemas:
+    no-response:
+      type: object
+      properties:
+        Response Code:
+          type: string
+          example: "204 No response"
+
+    MapTickerRequest:
+      type: object
+      properties:
+        tickers:
+            type: object
+            description: >
+              A key-value object representing one or more tickers to be displayed on the map. 
+              The key is a string identifier (e.g., city name or location tag), and the value is the ticker configuration.
+            required:
+              - title
+              - type
+              - last_modified_time
+              - latitude
+              - longitude
+            properties:
+              title:
+                type: string
+                maxLength: 20
+                description: The ticker's title.
+              type:
+                type: string
+                description: >
+                  Denotes what kind of object the ticker is tracking.
+                  <br><br><b>Allowed values:</b>
+                  <ul>
+                    <li><b>person</b>: Represents an individual or employee</li>
+                    <li><b>bicycle</b>: Tracks a bicycle</li>
+                    <li><b>motorcycle</b>: Represents a motorbike or scooter</li>
+                    <li><b>car</b>: Tracks a car</li>
+                    <li><b>van</b>: Represents a van or transport vehicle</li>
+                    <li><b>bus</b>: Used for buses or shuttles</li>
+                    <li><b>plane</b>: Represents air travel or flights</li>
+                    <li><b>office</b>: Static office location marker</li>
+                    <li><b>home</b>: Denotes a home or remote work location</li>
+                  </ul>
+                enum: [person, bicycle, motorcycle, car, van, bus, plane, office, home]
+              last_modified_time:
+                type: integer
+                format: int64
+                description: Epoch timestamp (in milliseconds) representing the last time the ticker was updated.
+              info:
+                type: string
+                maxLength: 30
+                description: Additional information or description for the ticker.
+              latitude:
+                type: number
+                format: double
+                description: Ticker's latitude coordinate.
+              longitude:
+                type: number
+                format: double
+                description: Ticker's longitude coordinate.
+      example:
+        tickers:
+          chennai:
+            title: "TN 07 AL 9916"
+            type: "van"
+            info: "Towards Zoho Corporation"
+            last_modified_time: 1721329461
+            latitude: 12.84567
+            longitude: 80.06092
+          mumbai:
+            title: "Zylker Office"
+            type: "office"
+            info: "Mumbai HQ"
+            last_modified_time: 1721329462
+            latitude: 19.0760
+            longitude: 72.8777
+
+    tickers-response:
+        type: object
+        properties:
+          title:
+            type: string
+          type:
+            type: string
+          last_modified_time:
+            type: integer
+            format: int64
+          latitude:
+            type: number
+            format: double
+          longitude:
+            type: number
+            format: double
+          info:
+            type: string
+        example:
+          chennai:
+            title: "TN 07 AL 9916"
+            type: "van"
+            last_modified_time: 1721329461
+            latitude: 12.84567
+            longitude: 80.06092
+            info: "Towards Zoho Corporation"
+          mumbai:
+            title: "Zylker Office"
+            type: "office"
+            last_modified_time: 1721329462
+            latitude: 19.0760
+            longitude: 72.8777
+            info: "Mumbai HQ"
+
+
+    DeleteMapTickerRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          description: List of ticker IDs to be deleted
+          items:
+            type: string
+      required:
+        - ids
+      example:
+        ids: ["chennai", "mumbai"]
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Applications.UPDATE: Update Application Info

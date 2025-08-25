@@ -1,0 +1,379 @@
+openapi: 3.0.0
+info:
+  title: Calls & Meetings
+  description: >
+    All APIs related to audio and video calls, which include video meetings, audio calls, and screen sharing, are categorized under the Calls & Meetings API.
+
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: callsmeetings
+    description: 'Calls & Meetings Module'
+
+paths:
+  /mediasessions:
+    get:
+      summary: History
+      description: |
+        Use this API to get the details of all your direct calls, meetings, and broadcasts.
+        <br><br>
+        <b>Threshold limit</b>: 50 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.<br><br>
+
+      parameters:
+
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [all, handshake, assembly, audio_conference, video_conference, direct_call]
+          description: >
+            <b>Call history of a particular call type can be retrieved.</b>
+            <ul>
+              <li><b>all</b>: Retrieve all media sessions (not combinable with other types)</li>
+              <li><b>handshake</b>: Retrieve handshake-type calls</li>
+              <li><b>assembly</b>: Retrieve organization-wide assemblies</li>
+              <li><b>audio_conference</b>: Retrieve audio conferences</li>
+              <li><b>video_conference</b>: Retrieve video conferences</li>
+              <li><b>direct_call</b>: Retrieve one-on-one direct calls</li>
+            </ul>
+            <br>
+            <b>Note</b>:
+            <ul>
+              <li>When "all" or "direct_call" type is used, you cannot add any other type seperated by commas.</li>
+              <li>When "type" is not mentioned, the default values returned are "audio_conference", "video_conference", "handshake", "assembly"</li>
+            </ul>  
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search a call using the call title.
+        - in: query
+          name: sync_token
+          schema:
+            type: string
+          description: A token to retrieve recently synced calls.
+        - in: query
+          name: next_token
+          schema:
+            type: string
+          description: A token to fetch the next set of calls.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: Number of call history records to retrieve.
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+          description: Start timestamp to filter media sessions.
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+          description: End timestamp to filter media sessions.
+        - in: query
+          name: last_modified
+          schema:
+            type: string
+            format: date-time
+          description: Retrieve media sessions modified after this timestamp.
+        - in: query
+          name: filter
+          schema:
+            type: string
+            enum: [live, viewed, scheduled, missed, received, dialled]
+          description: >
+            The media sessions can be filtered based on the following categories.<br>
+            Allowed values:
+            <ul>
+              <li><b>live</b>: Ongoing calls</li>
+              <li><b>viewed</b>: Already viewed calls</li>
+              <li><b>scheduled</b>: Scheduled media sessions</li>
+              <li><b>missed</b>: Missed calls (only for <code>direct_call</code>)</li>
+              <li><b>received</b>: Received calls (only for <code>direct_call</code>)</li>
+              <li><b>dialled</b>: Dialed calls (only for <code>direct_call</code>)</li>
+            </ul>
+            <br>
+            <b>Note</b>:
+            <ul>
+              <li>"missed", "received", "dialled" can be selected only for the type "direct_call".</li>
+              <li>filter cannot be used when "all" type is used.</li>
+            </ul>  
+        - in: query
+          name: host_id
+          schema:
+            type: integer
+          description: Filter by host ID of the media session.
+        - in: query
+          name: recipient_id
+          schema:
+            type: integer
+          description: Filter by recipient ID of the media session.
+        - in: query
+          name: recipient_ids
+          schema:
+            type: string
+          description: Comma-separated list of recipient IDs to filter sessions.
+
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaSessionListResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.MediaSession.READ
+
+  /mediasessions/{CALL_ID}/participants:
+    get:
+      summary: Get Participants
+      description: |
+         Use this API to get all the participants in a call or a meeting<br>
+         <b>Note</b>: The header <b>X-API-VERSION 1</b> must be passed to support the use of query params. Users can get the call ID from the <b>nrs_id</b> key in the AV_History API.
+         <br><br>
+          <b>Threshold limit</b>: 20 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.<br><br>
+      parameters:
+        - name: next_token
+          in: query
+          required: false
+          description: Token to get the next set of participants.
+          schema:
+            type: string
+
+        - name: limit
+          in: query
+          required: false
+          description: Use this parameter to specifiy the number of participants retrieved per API call.
+          schema:
+            type: string
+
+        - name: from
+          in: query
+          required: false
+          description: Use this parameter to fetch participants from the specified time.
+          schema:
+            type: string    
+
+        - name: to
+          in: query
+          required: false
+          description: Use this parameter to fetch participants till the specified time.
+          schema:
+            type: string 
+
+        - name: filter
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Use this parameter to fetch the list of active and inactive users in the call.<br><br>
+            <b>Allowed values:</b>
+            <ul>
+              <li><b>live</b> – Current live users</li>
+              <li><b>invited</b> – Users invited but yet to join</li>
+              <li><b>joined</b> – Users who joined and left the call</li>
+            </ul>
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaSessionParticipantsResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.MediaSession.READ
+
+components:
+  schemas:
+
+    no-response:
+      type: object
+      properties:
+        Response Code:
+          type: string
+          example: "204 No response"
+
+    MediaSessionListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "392330000000598005"
+              end_time:
+                type: integer
+                example: 1643361458859
+              session_id:
+                type: string
+                example: "b13d0691-ca45-47c7-b6ad-6cbdf339b9e9"
+              start_time:
+                type: integer
+                example: 1643361407614
+              notes:
+                type: boolean
+                example: false
+              is_partial:
+                type: boolean
+                example: true
+              nrs_id:
+                type: string
+                example: "62440502_1643361407784_1643361407650"
+              type:
+                type: string
+                example: "audio_conference"
+              title:
+                type: string
+                example: "av_recording"
+              scope:
+                type: string
+                example: "personal"
+              host:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "\"Scott Fisher"
+                  id:
+                    type: string
+                    example: "62589940502"
+              participant_count:
+                type: integer
+                example: 10
+            required:
+              - id
+              - end_time
+              - session_id
+              - start_time
+              - notes
+              - is_partial
+              - nrs_id
+              - type
+              - title
+              - scope
+              - host
+              - participant_count
+          example:
+              - id: "392330000000598005"
+                end_time: 1643361458859
+                session_id: "b13d0691-ca45-47c7-b6ad-6cbdf339b9e9"
+                start_time: 1643361407614
+                notes: false
+                is_partial: true
+                nrs_id: "62440502_1643361407784_1643361407650"
+                type: "audio_conference"
+                title: "av_recording"
+                scope: "personal"
+                host:
+                  name: "\"Scott Fisher"
+                  id: "62589940502"
+                participant_count: 10
+              - recording: true
+                id: "392330000089297001"
+                end_time: 1643283428901
+                session_id: "d419f9e8-36c7-4179-b35a-d7a38df78860"
+                start_time: 1643283406317
+                notes: false
+                is_partial: true
+                nrs_id: "62440502_1643283406451_CT_1184653329648523663_62439860"
+                type: "video_conference"
+                chat_id: "CT_11846783329648523663_62439860"
+                title: "Marketing Campaigns"
+                scope: "chat"
+                host:
+                  name: "\"Scott Fisher"
+                  id: "62440502"
+                chat:
+                  title: "Q3 releases"
+                  id: "CT_1184653329648523663_62439860"
+                participant_count: 15
+
+    MediaSessionParticipantsResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          example: "/api/v2/mediasessions/15093303_1654794155339_GN_1256255415498864798_15093376/participants"
+        type:
+          type: string
+          example: "participant"
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              email_id:
+                type: string
+                example: "scott.fisher@zylker.com"
+              name:
+                type: string
+                example: "Scott"
+              end_time:
+                type: integer
+                example: 1654797815323
+              start_time:
+                type: integer
+                example: 1654794247047
+              role:
+                type: string
+                example: "host"
+              id:
+                type: string
+                example: "12543958"
+      example:
+        url: "/api/v2/mediasessions/15093303_1654794155339_GN_1256255415498864798_15093376/participants"
+        type: "participant"
+        data:
+          - email_id: "scott.fisher@zylker.com"
+            name: "Scott"
+            end_time: 1654797815323
+            start_time: 1654794247047
+            role: "host"
+            id: "12543958"
+          - email_id: "olivia.palmer@zylker.com"
+            name: "Admin Account"
+            end_time: 1654794872529
+            start_time: 1654794859243
+            role: "speaker"
+            id: "14395792"
+
+    
+      
+
+  
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Organisation.CREATE: Add Roles in an Organization
+            ZohoCliq.Organisation.UPDATE: Update Roles in an Organization
+            ZohoCliq.Organisation.DELETE: Delete Roles in an Organization
+            ZohoCliq.Organisation.READ: Read Roles in an Organization

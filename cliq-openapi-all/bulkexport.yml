@@ -1,0 +1,390 @@
+openapi: 3.0.0
+info:
+  title: Maintenance - Bulk Export
+  description: >
+    Create a backup of all conversations (chats, channels and bots) by exporting it.
+    <br><br>
+    <b>Note</b>: All maintenance APIs will be accessible to give a response only to the organization admin in Cliq.
+
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com'
+    description: 'API Endpoint'
+
+tags:
+  - name: bulkexport
+    description: 'Bulk Export'
+
+paths:
+
+  /maintenanceapi/v2/chats?fields=title,chat_id:
+    get:
+      summary: Export Conversations
+      description: >
+        Use this API to export specific details of all individual chats and group conversations in your organization.
+
+      parameters:
+        - name: Content-Type
+          in: header
+          required: true
+          description: Specifies the format of the exported data.
+          schema:
+            type: string
+            example: text/csv
+
+        - name: fields
+          in: query
+          required: true
+          schema:
+            type: string
+            description: >
+              Comma-separated list of fields to be exported for each chat.<br>
+              <b>Allowed values</b>:
+              <ul>
+                <li><b>title</b> : The name or title of the chat.</li>
+                <li><b>chat_id</b> : The unique identifier assigned to the chat.</li>
+                <li><b>creation_time</b> : The timestamp when the chat was created.</li>
+                <li><b>last_modified_time<b> : The timestamp when the chat was last updated.</li>
+                <li><b>participant_count</b> : The total number of users in the chat.</li>
+                <li><b>total_message_count</b> : The total number of messages in the chat.</li>
+                <li><b>creator_id</b> : The user ID of the person who created the chat.</li>
+              </ul>      
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/export-conversations-response'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.OrganizationChats.READ 
+
+  /maintenanceapi/v2/channels?fields=name,channel_id,participant_count:
+    get:
+      summary: Export Channels
+      description: >
+        Use this API to export details of all the channels in your organization.
+
+      parameters:
+        - name: Content-Type
+          in: header
+          required: true
+          description: Specifies the format of the exported data.
+          schema:
+            type: string
+            example: text/csv
+
+        - name: fields
+          in: query
+          required: true
+          schema:
+            type: string
+          description: >
+            Use this parameter to get the list of necessary details to be exported for all channels in your organization.
+            <br>
+            <b>Allowed values:</b>
+            <ul>
+              <li><b>name:</b> Name of the channel</li>
+              <li><b>channel_id:</b> Unique identifier of the channel</li>
+              <li><b>creation_time:</b> Timestamp when the channel was created</li>
+              <li><b>last_modified_time:</b> Timestamp of the most recent update</li>
+              <li><b>creator_id:</b> Unique ID of the channel creator</li>
+              <li><b>description:</b> Description of the channel</li>
+              <li><b>participant_count:</b> Number of users in the channel</li>
+              <li><b>total_message_count:</b> Total messages exchanged in the channel</li>
+              <li><b>status:</b> Indicates if the channel is active or archived</li>
+              <li><b>role:</b> Role of the user accessing the channel (e.g., admin, member)</li>
+            </ul>     
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/export-channels-response'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.OrganizationChats.READ 
+
+  /maintenanceapi/v2/chats/{CHAT_ID}/members?fields=name,email_id:
+    get:
+      summary: Export Members in a Conversation
+      description: >
+        Use this API to exclusively export the details of members from a specific chat or channel.
+
+
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          description: Unique idenfifier of the chat from which details of the members need to be retrieved.
+          schema:
+            type: string
+
+        - name: Content-Type
+          in: header
+          required: true
+          description: Specifies the format of the exported data.
+          schema:
+            type: string
+            example: text/csv
+
+        - name: fields
+          in: query
+          required: true
+          schema:
+            type: string
+          description: >
+            Use this parameter to get the details of members to be exported from a specific chat or channel in your organization.
+            <br>
+            <b>Allowed values:</b>
+            <ul>
+              <li><b>name:</b> Name of the member</li>
+              <li><b>email:</b> Email ID of the member </li>
+              <li><b>user_id:</b> Unique ID of the member</li>
+            </ul> 
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/export-members-response'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.OrganizationChats.READ 
+
+  /maintenanceapi/v2/chats/{CHAT_ID}/messages:
+    get:
+      summary: Export Messages  
+      description: >
+        Use this API to export transcripts or history of all conversations in your organization.
+
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          description: Unique idenfifier of the chat from which history of conversations needs to be exported.
+          schema:
+            type: string  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessagesResponse'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.OrganizationChats.READ 
+      
+components:
+  schemas:
+
+    no-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "304 No response"
+
+    export-conversations-response:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              id:
+                type: string
+      example:
+        list:
+          - name: "Whats new-feature updates"
+            id: "1277744317795524707"
+          - name: "Zylcal team trip"
+            id: "1277744317795524704"
+          - name: "Notely release 2.0"
+            id: "1277744317795524710"
+          - name: "Regional sales managers"
+            id: "1252218064667202771"
+          - name: "marketing-editors"
+            id: "1252218129769350577"
+
+
+    export-channels-response:
+      type: object
+      properties:
+        data:
+          type: array
+          description: List of channel export records.
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              channel_id:
+                type: string
+              participant_count:
+                type: integer
+      example:
+        data:
+          - name: "#announcements"
+            channel_id: "15928000000004007"
+            participant_count: 600
+          - name: "#marketing"
+            channel_id: "15928000000021001"
+            participant_count: 15
+          - name: "#devops"
+            channel_id: "15928000000032005"
+            participant_count: 54
+          - name: "#sales"
+            channel_id: "15928000000054005"
+            participant_count: 250
+          - name: "#contentreview"
+            channel_id: "15928000000075001"
+            participant_count: 88
+
+    export-members-response:
+      type: object
+      properties:
+        data:
+          type: array
+          description: List of chat member export records.
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              email:
+                type: string
+      example:
+        data:
+          - name: "Scott Fisher"
+            email: "scott.fisher@zylker.com"
+          - name: "Ryan West"
+            email: "ryan.west@zylker.com"
+          - name: "Olivia Palmer"
+            email: "olivia.palmer@zylker.com"    
+
+    ChatMessagesResponse:
+        type: object
+        properties:
+          data:
+            type: array
+            description: List of messages exchanged in a conversation.
+            items:
+              type: object
+              properties:
+                sender:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: "Scott Fisher"
+                    id:
+                      type: string
+                      example: "1234567"
+                ack_key:
+                  type: string
+                  example: "1528182303065"
+                id:
+                  type: string
+                  example: "1528182303637_7763880281"
+                time:
+                  type: integer
+                  example: 1528182303637
+                type:
+                  type: string
+                  example: "text"
+                content:
+                  type: object
+                  oneOf:
+                    - properties:
+                        text:
+                          type: string
+                          example: "Hey Olivia, are you available right now to discuss about our cross marketing with Notely?"
+                    - properties:
+                        type:
+                          type: string
+                          example: "call_notification"
+                        data:
+                          type: object
+                          properties:
+                            status:
+                              type: string
+                              example: "completed"
+                            callee:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                                  example: "Olivia"
+                                id:
+                                  type: string
+                                  example: "55185718"
+                            duration:
+                              type: string
+                              example: "00:00:09"
+                            call_type:
+                              type: string
+                              example: "audio"
+        example:
+          data:
+            - sender:
+                name: "Scott Fisher"
+                id: "1234567"
+              ack_key: "1528182303065"
+              id: "1528182303637_7763880281"
+              time: 1528182303637
+              type: "text"
+              content:
+                text: "Hey Olivia, are you available right now to discuss about our cross marketing with Notely?"
+            - sender:
+                name: "Scott Fisher"
+                id: "1234567"
+              ack_key: ""
+              id: "1534756983506_74468102866"
+              time: 1534756983506
+              type: "info"
+              content:
+                type: "call_notification"
+                data:
+                  status: "completed"
+                  callee:
+                    name: "Olivia"
+                    id: "55185718"
+                  duration: "00:00:09"
+                  call_type: "audio"
+            - sender:
+                name: "Olivia Palmer"
+                id: "9876543"
+              ack_key: "1547615832454"
+              id: "1547615832586_143161526662"
+              time: 1547615832586
+              type: "text"
+              content:
+                text: "Sure, Scott!s"
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.OrganizationChats.READ : Read chats of the organization

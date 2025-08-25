@@ -1,0 +1,784 @@
+openapi: 3.0.0
+info:
+  title: Departments
+  description: >
+   Departments in Cliq represent groups of members assigned to specific areas within your organization, such as Sales, Marketing, Product Development, and more.<br><br>
+   <b>Note:</b> If your organization is integrated with Zoho People, the department APIs for creating, updating, and deleting will not work.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: departments
+    description: 'Departments Module'
+
+paths:
+  /departments:
+    post:
+      summary: Create a Department
+      description: |
+        Use this API to create a department. This API will not return success if your Cliq organization is integrated with Zoho People.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.<br><br>
+        <h4>Error Codes</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your departments.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>User who is not an organization admin tries to create a department.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>User does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_lead_needed</b></td>
+              <td>Department lead's user ID is not provided.</td>
+            </tr>
+            <tr>
+              <td><b>department_lead_invalid</b></td>
+              <td>The user ID of the department lead is not valid or the user does not belong to your Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>departmet_parent_department_needed</b></td>
+              <td>Parent department ID is not provided.</td>
+            </tr>
+            <tr>
+              <td><b>department_not_exist</b></td>
+              <td>Parent department ID is not valid.</td>
+            </tr>
+            <tr>
+              <td><b>department_create_failed</b></td>
+              <td>Internal server error occurred.</td>
+            </tr>
+          </tbody>
+        </table>
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentCreateResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Departments.CREATE
+
+    get:
+      summary: List all Departments
+      description: |
+        Use this API to get the list of all departments in your organization.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: >
+            The total number of departments to be fetched. If limit is not specified, a maximum of 25 departments will be returned for a request.
+            </ul>
+          schema:
+            type: string
+
+        - name: search
+          in: query
+          required: false
+          description: >
+            A string to search for departments by name.
+            <ul>
+              <li><b>Note</b>: This param is mandatory if your Cliq organization is integrated with Zoho People.</li>
+            </ul>
+          schema:
+            type: string
+
+        - name: next_token
+          in: query
+          required: false
+          description: >
+            Use this parameter to fetch the next set of departments.
+          schema:
+            type: string
+            example: 2a4e39fab27032f106ced7277c5b336d
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/DepartmentListResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Departments.READ
+              - ZohoPeople.employee.READ
+
+  /departments/{DEPARTMENT_ID}:
+    get:  
+      summary: Get Department Details
+      description: |
+        Use this API to get details of a department.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier of the department.
+          schema:
+            type: string  
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/DepartmentDetailResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Departments.READ
+              - ZohoPeople.forms.READ
+
+    put:
+      summary: Update Department
+      description: |
+        Use this API to update details of a department. This API will not return success if your Cliq Organization is integrated with Zoho People.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+        <h4>Error Codes</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your departments.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>A user who is not an organization admin attempted to create a department.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>The user does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_already_exist</b></td>
+              <td>A department with the given name already exists.</td>
+            </tr>
+            <tr>
+              <td><b>department_lead_invalid</b></td>
+              <td>The department lead’s user ID is invalid or the user is not part of your Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_not_exist</b></td>
+              <td>The specified parent department ID or department ID is invalid.</td>
+            </tr>
+            <tr>
+              <td><b>department_cyclic_loop</b></td>
+              <td>A child department ID is being assigned as its own parent, causing a cyclic reference.</td>
+            </tr>
+            <tr>
+              <td><b>department_edit_failed</b></td>
+              <td>An internal server error occurred while editing the department.</td>
+            </tr>
+          </tbody>
+        </table>
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier of the department which needs to be modified.
+          schema:
+            type: string  
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreateRequest'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentCreateResponse'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Departments.UPDATE
+
+    delete:
+      summary: Delete Department
+      description: |
+        Use this API to delete a department.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+            <h4>Error Codes</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your departments.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>User who is not an organization admin tries to create a department.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>User does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_not_exist</b></td>
+              <td>Parent department ID is not valid or given department ID is not valid.</td>
+            </tr>
+            <tr>
+              <td><b>department_base_dept_delete_not_allowed</b></td>
+              <td>Parent department cannot be deleted.</td>
+            </tr>
+            <tr>
+              <td><b>department_delete_failed</b></td>
+              <td>Internal server error occurred.</td>
+            </tr>
+          </tbody>
+        </table>
+
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier of the department which needs to be deleted.
+          schema:
+            type: string  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Departments.DELETE
+
+  /departments/{DEPARTMENT_ID}/members:
+    get:
+      summary: Get Department Members
+      description: |
+        Use this API to get the list of all the department members.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier for the department from which the list of members should be retrieved.
+          schema:
+            type: string  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Departments.READ
+              - ZohoPeople.dashboard.READ
+
+    post: 
+      summary: Add Department Members
+      description: |
+        Use this API to add members to a department. This API will not return success if your Cliq Organization is integrated with Zoho People.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+        <h4>Error Codes</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your departments.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>User who is not an organization admin tries to create a department.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>User does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_not_exist</b></td>
+              <td>Parent department ID or the given department ID is not valid.</td>
+            </tr>
+            <tr>
+              <td><b>department_add_member_failed</b></td>
+              <td>Internal server error occurred.</td>
+            </tr>
+          </tbody>
+        </table>
+      
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier for the department in which a list of members need to be added.
+          schema:
+            type: string 
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentMembersRequest'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Departments.UPDATE
+
+    delete:
+      summary: Delete Department Members
+      description: |
+        Use this API to delete members from a department.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+        <br><br>
+        <h4>Error Codes</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Error Code</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>operation_not_allowed</b></td>
+              <td>The operation is not allowed. This might also be because you are using Zoho People to manage your departments.</td>
+            </tr>
+            <tr>
+              <td><b>not_an_organization_admin</b></td>
+              <td>User who is not an organization admin tries to create a department.</td>
+            </tr>
+            <tr>
+              <td><b>not_zoho_organization_user</b></td>
+              <td>User does not belong to the Cliq organization.</td>
+            </tr>
+            <tr>
+              <td><b>department_not_exist</b></td>
+              <td>Parent department ID or the given department ID is not valid.</td>
+            </tr>
+            <tr>
+              <td><b>department_delete_member_failed</b></td>
+              <td>Internal server error occurred.</td>
+            </tr>
+          </tbody>
+        </table>
+
+      parameters:
+        - name: DEPARTMENT_ID
+          in: path
+          required: true
+          description: Unique identifier for the department from which list of members need to be deleted.
+          schema:
+            type: string 
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteUsersRequest'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Departments.DELETE
+
+components:
+  schemas:
+
+    no-response:
+      type: object
+      properties:
+        Response Code:
+          type: string
+          example: "204 No response"
+
+    UserListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              email_id:
+                type: string
+                example: amelia.b@zylker.com
+              zuid:
+                type: string
+                example: "636000786"
+              zoid:
+                type: string
+                example: "54107592"
+              display_name:
+                type: string
+                example: Amelia
+              name:
+                type: string
+                example: Amelia Burrows
+              organization_id:
+                type: string
+                example: "631836344"
+              id:
+                type: string
+                example: "636000786"
+
+    DepartmentMembersRequest:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          description: List of user ID strings to be added to the department.
+          items:
+            type: string
+          example:
+            - "1234567"
+            - "9875466"
+            - "3456789"
+        email_ids:
+          type: array
+          description: List of email ID strings to be added to the department.
+          items:
+            type: string
+          example:
+            - "amy@zylker.com"
+            - "ben@zylker.com"
+            - "claire@zylker.com"
+      oneOf:
+        - required: [user_ids]
+        - required: [email_ids]
+
+    DeleteUsersRequest:
+      type: object
+      required:
+        - user_ids
+      properties:
+        user_ids:
+          type: array
+          description: The list of all user IDs to be deleted.
+          items:
+            type: string
+          example:
+            - "169917679"
+            - "123456799"
+
+
+
+    DepartmentCreateRequest:
+      type: object
+      required:
+        - name
+        - lead_zuid
+        - parent_department_id
+      properties:
+        name:
+          type: string
+          description: >
+            Name of the department you're creating.
+          example: Zylker Support
+        lead_zuid:
+          type: string
+          description: >
+            ID of the user who will be assigned as the department lead.
+          example: "67839566"
+        parent_department_id:
+          type: string
+          description: >
+            ID of the parent department to which this department will belong.
+          example: "190135625778924001"
+        user_ids:
+          type: array
+          description: >
+            (Optional) List of user IDs to be added as members of this department.
+          items:
+            type: string
+          example:
+            - "163319973"
+            - "673890827"
+            - "654321789"
+
+    DepartmentCreateResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            lead:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "631830849"
+                organization_id:
+                  type: string
+                  example: "631836344"
+                zoid:
+                  type: string
+                  example: "54107592"
+                display_name:
+                  type: string
+                  example: Scott Fisher
+                email_id:
+                  type: string
+                  example: scott.fisher@zylker.com
+                zuid:
+                  type: string
+                  example: "631830849"
+                name:
+                  type: string
+                  example: Scott Fisher
+            name:
+              type: string
+              example: Zylker APAC Sales
+            parent_department_id:
+              type: string
+              example: "1901318000001424001"
+            lead_zuid:
+              type: string
+              example: "631830849"
+            is_default:
+              type: boolean
+              example: false
+            id:
+              type: string
+              example: "1901318000002280001"
+
+
+    DepartmentListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: Zylker Widgets Inc
+              is_default:
+                type: boolean
+                example: true
+              id:
+                type: string
+                example: "1901318000001071001"
+              members_count:
+                type: string
+                example: "7"
+              lead:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: Scott Fisher
+                  id:
+                    type: string
+                    example: "631830849"
+                  country:
+                    type: string
+                    example: us
+                  email_id:
+                    type: string
+                    example: scott.fisher@zylker.com
+                  zoid:
+                    type: string
+                    example: "54107592"
+                  timezone:
+                    type: string
+                    example: Asia/Kolkata
+                  first_name:
+                    type: string
+                    example: Scott
+                  full_name:
+                    type: string
+                    example: Scott Fisher
+                  zuid:
+                    type: string
+                    example: "631830849"
+                  display_name:
+                    type: string
+                    example: Scott Fisher
+                  last_name:
+                    type: string
+                    example: Fisher
+              parent_department_id:
+                type: string
+                example: "1901318000001424001"
+              lead_zuid:
+                type: string
+                example: "631830849"
+        next_token:
+          type: string
+          example: 2a4e39fab27032f106ced7277c5b336d
+
+
+    DepartmentDetailResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            members_count:
+              type: string
+              example: "7"
+            lead:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "631830849"
+                organization_id:
+                  type: string
+                  example: "631836344"
+                zoid:
+                  type: string
+                  example: "54107592"
+                display_name:
+                  type: string
+                  example: Scott Fisher
+                email_id:
+                  type: string
+                  example: scott.fisher@zylker.com
+                zuid:
+                  type: string
+                  example: "631830849"
+                name:
+                  type: string
+                  example: Scott Fisher
+            name:
+              type: string
+              example: Marketing
+            parent_department_id:
+              type: string
+              example: "1901318000001424001"
+            lead_zuid:
+              type: string
+              example: "631830849"
+            is_default:
+              type: boolean
+              example: false
+            id:
+              type: string
+              example: "1901318000001071015"
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Departments.CREATE: Add Departments
+            ZohoCliq.Departments.UPDATE: Update Departments
+            ZohoCliq.Departments.DELETE: Delete Departments
+            ZohoCliq.Departments.READ: Read Departments

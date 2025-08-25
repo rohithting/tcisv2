@@ -1,0 +1,392 @@
+openapi: 3.0.0
+info:
+  title: Databases
+  description: >
+    Cliq Database serves as an ideal storage interface for building integrations on the Cliq Platform. It allows you to create, modify, store, and synchronize easily accessible data items.
+    <br><br>
+    You can access the Cliq Record APIs using the following OAuth scope:<br>  
+    <b>OAuth Scope for Record APIs</b>: <code>ZohoCliq.StorageData.ALL</code>
+    <br><br>
+    This scope provides basic CRUD (Create, Read, Update, Delete) access to the Record APIs.
+
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: databases
+    description: 'Databases'
+
+paths:
+
+  /storages/{DATABASE_UNIQUE_NAME}/records:
+    post:
+      summary: Add a record
+      description: >
+        Use this API to add records to a database.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: DATABASE_UNIQUE_NAME
+          in: path
+          required: true
+          description: >
+             The unique name of the database in which you'd like the records to be added.
+          schema:
+            type: string  
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddRecordRequest'
+
+      responses:
+        '300':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Products-DatabaseResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.StorageData.CREATE
+            - ZohoCliq.StorageData.ALL 
+
+    get:
+      summary: List records
+      description: >
+        Use this API to get the list of all records in a specific database.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: DATABASE_UNIQUE_NAME
+          in: path
+          required: true
+          description: >
+             The unique name of the database in which you'd like to fetch the records.
+          schema:
+            type: string  
+
+        - name: criteria
+          in: query
+          description: This parameter fetches records that meet the specified criteria expression.
+          required: false
+          schema:
+            type: string
+
+        - name: from_index
+          in: query
+          description: This parameter fetches records starting from a particular index value.
+          required: false
+          schema:
+            type: integer
+
+        - name: limit
+          in: query
+          description: Use this parameter to limit the number of records fetched from a particular index value.
+          required: false
+          schema:
+            type: integer
+
+        - name: order_by
+          in: query
+          description: >
+            Use this parameter to retrieve the list of records in ascending or descending order.<br><br>
+            <b>Allowed values:</b><br>
+            <ul>
+              <li><b>+column_name</b> - Ascending order by the specified column.</li>
+              <li><b>-column_name</b> - Descending order by the specified column.</li>
+            </ul>
+            <b>Note:</b> Use <code>%2B</code> instead of <code>+</code> in URLs, as <code>+</code> is a reserved character.
+          required: false
+          schema:
+            type: string
+
+        - name: start_token
+          in: query
+          description: >
+            This token is obtained in the response JSON when from_index and limit are specified.<br>
+            Use this parameter in the next request to retrieve the remaining records in the database.
+          required: false
+          schema:
+            type: string
+            
+
+      responses:
+        '300':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/product-database-list-records'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.StorageData.READ
+            - ZohoCliq.StorageData.ALL 
+
+  /storages/{DATABASE_UNIQUE_NAME}/records/{RECORD_ID}:
+    get:
+      summary: Retrieve a record
+      description: >
+        Use this API to get details of a record by mentioning the record ID.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: DATABASE_UNIQUE_NAME
+          in: path
+          required: true
+          description: >
+             The unique name of the database in which you'd like to fetch a specific record.
+          schema:
+            type: string 
+
+        - name: RECORD_ID
+          in: path
+          required: true
+          description: >
+             Unique idenfifier of the record which needs to be retrieved.
+          schema:
+            type: string     
+
+      responses:
+        '300':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Products-DatabaseResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.StorageData.READ
+            - ZohoCliq.StorageData.ALL 
+
+    put:
+      summary: Update a record
+      description: >
+        Use this API to update record details from a specific database.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      
+      parameters:
+        - name: DATABASE_UNIQUE_NAME
+          in: path
+          required: true
+          description: >
+             The unique name of the database in which you'd like to update a specific record.
+          schema:
+            type: string 
+
+        - name: RECORD_ID
+          in: path
+          required: true
+          description: >
+             Unique idenfifier of the record which needs to be modified.
+          schema:
+            type: string     
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRecordRequest'
+
+      responses:
+        '300':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Products-DatabaseResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.StorageData.UPDATE
+            - ZohoCliq.StorageData.ALL   
+
+    delete: 
+      summary: Delete a record
+      description: >
+        Use this API to update record details from a specific database.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      
+      parameters:
+        - name: DATABASE_UNIQUE_NAME
+          in: path
+          required: true
+          description: >
+             The unique name of the database in which you'd like to delete a specific record.
+          schema:
+            type: string 
+
+        - name: RECORD_ID
+          in: path
+          required: true
+          description: >
+             Unique idenfifier of the record which needs to be deleted.
+          schema:
+            type: string 
+
+      responses:
+        '300':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.StorageData.DELETE
+            - ZohoCliq.StorageData.ALL  
+
+components:
+  schemas:
+
+    no-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "304 No response"
+
+    AddRecordRequest:
+        type: object
+        required:
+          - values
+        properties:
+          values:
+            type: object
+            description: Array of JSON Objects. The field values to be added as a record in the database.
+            additionalProperties: true
+        example:
+          values:
+            productid: "1001"
+            productcategory: "zylker"
+            instock: true
+            productsecretcode: "secretkey123"
+            productdescription: "zylker description"
+
+    UpdateRecordRequest:
+        type: object
+        required:
+          - values
+        properties:
+          values:
+            type: object
+            description: Array of JSON Objects.
+            additionalProperties: true
+        example:
+          values:
+            instock: false
+            productdescription: "zylker products"
+
+
+    Products-DatabaseResponse:
+      type: object
+      properties:
+        productcateogry:
+          type: string
+          example: "zylker"
+        id:
+          type: string
+          example: "14756000888008001"
+        productid:
+          type: string
+          example: "1001"
+        instock:
+          type: boolean
+          example: true
+        productsecretcode:
+          type: string
+          example: "secretkey123"
+        productdescription:
+          type: string
+          example: "zylker description"
+      additionalProperties: true
+
+    product-database-list-records:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            type: object
+            properties:
+              productcateogry:
+                type: string
+              id:
+                type: string
+              productid:
+                type: string
+              instock:
+                type: boolean
+              productsecretcode:
+                type: string
+              productdescription:
+                type: string
+          example:
+            - productcateogry: "zylker"
+              id: "14756000000008008"
+              productid: "1004"
+              instock: true
+              productsecretcode: "secretkey234"
+              productdescription: "zylker description"
+            - productcateogry: "zylcal"
+              id: "14756000000008003"
+              productid: "1003"
+              instock: false
+              productsecretcode: "secretkey123"
+              productdescription: "zylcal description"
+            - productcateogry: "zylker"
+              id: "14756000000008004"
+              productid: "1002"
+              instock: true
+              productsecretcode: "secretkey123"
+              productdescription: "zylker description"
+            - productcateogry: "zylker"
+              id: "14756000000008005"
+              productid: "1001"
+              instock: true
+              productsecretcode: "secretkey897"
+              productdescription: "zylker description"
+
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Profile.UPDATE: Update Profile
+            ZohoCliq.Profile.READ: Read Profile

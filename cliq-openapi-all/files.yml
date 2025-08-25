@@ -1,0 +1,386 @@
+openapi: 3.0.0
+info:
+  title: Files
+  description: >
+    Utilize the Files API to download or share files with any chat, channel, or bot you have access to.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: files
+    description: 'Files Module'
+
+paths:
+
+  /files/{FILE_ID}:
+    get:
+      summary: Get Files
+      description: >
+        Get files from any chat, channel or bot which you are a part of using its file ID.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+
+        - name: FILE_ID
+          in: path
+          required: true
+          description: |
+            The unique identifier of the file.<br>
+            <b>Note<b> : You can retrieve the file id using the - Get messages endpoint.
+          schema:
+            type: string   
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Attachments.READ
+
+  /channelsbyname/{CHANNEL_UNIQUE_NAME}/files:
+    post:
+      summary: Share files to a channel
+      description: >
+        Share files to a bot using the bot unique name. The content of the file should be of type <code>multipart/form-data</code>
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+
+        - name: CHANNEL_UNIQUE_NAME
+          in: path
+          required: true
+          description: |
+            The unique identifier of the channel in which the attachment needs to be shared.
+          schema:
+            type: string   
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/share-files-to-channel-request-body'  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+
+  /bots/{BOT_UNIQUE_NAME}/files:
+    post:
+      summary: Share files to a bot
+      description: >
+        Share files to a bot using the bot unique name. The content of the file should be of type <code>multipart/form-data</code>
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+
+        - name: BOT_UNIQUE_NAME
+          in: path
+          required: true
+          description: |
+            The unique identifier of the bot in which the attachment needs to be sent.
+          schema:
+            type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/share-files-to-bot-request-body'  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+
+  /chats/{CHAT_ID}/files:
+    post:
+      summary: Share files in a chat
+      description: >
+        Share files in a chat using the Chat ID. The content of the file should be of type <code>multipart/form-data</code>
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+
+        - name: CHAT_ID
+          in: path
+          required: true
+          description: |
+            The unique identifier of the chat in which the attachment needs to be sent.
+          schema:
+            type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/share-files-to-chat-request-body'  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+
+  /buddies/{EMAIL_ID}/files:
+     post:
+      summary: Share files to a user
+      description: >
+        Share files to a user using their Email ID or User ID. The content of the file should be of type <code>multipart/form-data</code>
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+
+        - name: CHAT_ID
+          in: path
+          required: true
+          description: |
+            The unique identifier of the chat in which the attachment needs to be sent.
+          schema:
+            type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/share-files-to-channel-request-body'  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+
+
+components:
+  schemas:
+
+    no-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "204 No response"
+
+    share-files-to-channel-request-body:
+        type: object
+        properties:
+          files:
+            type: array
+            items:
+              type: string
+              format: binary
+            description: |
+              The file(s) to be shared.
+              - File size limit: 50 MB
+              - Maximum number of files: 10
+          comments:
+            type: array
+            items:
+              type: string
+            description: The comments to be added for each file.
+          bot_unique_name:
+            type: string
+            description: Use this parameter to share a file in a channel as a bot. The bot should already be a participant in the channel.
+          mark_as_read:
+            type: boolean
+            description: Use this to mark the shared file as read for the user. By default, the message will be unread for the user.
+          bot_name:
+            type: string
+            description: To share the file with a custom name displayed as the sender.
+          bot_image:
+            type: string
+            format: uri
+            description: The URL of the image used as the sender's avatar or profile picture.
+        required:
+          - files
+        example: |
+                Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW<br>
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="file"; filename="zylker-sales.pdf"
+                Content-Type: application/pdf
+
+                Content of zylker-sales.pdf
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="file"; filename="revenue-chart.jpg"
+                Content-Type: image/jpeg
+
+                Content of revenue-chart.jpg
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="comments"
+
+                ["Annual Zylker Sales Report","Revenue Chart for Q3"]
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+    share-files-to-bot-request-body:
+        type: object
+        properties:
+          files:
+            type: array
+            items:
+              type: string
+              format: binary
+            description: |
+              The file(s) to be shared.
+              - File size limit: 50 MB
+              - Maximum number of files: 10
+          comments:
+            type: array
+            items:
+              type: string
+            description: The comments to be added for each file.
+          user_id:
+            type: boolean
+            description: Use this parameter to share the file with a specific subscriber of the bot.
+          bot_name:
+            type: string
+            description: To share the file with a custom name displayed as the sender.
+          bot_image:
+            type: string
+            format: uri
+            description: The URL of the image used as the sender's avatar or profile picture.
+        required:
+          - files
+        example: |
+                Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW<br>
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="file"; filename="zylker-sales.pdf"
+                Content-Type: application/pdf
+
+                Content of zylker-sales.pdf
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="file"; filename="revenue-chart.jpg"
+                Content-Type: image/jpeg
+
+                Content of revenue-chart.jpg
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="comments"
+
+                ["Annual Zylker Sales Report","Revenue Chart for Q3"]
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW--
+        
+    share-files-to-chat-request-body:
+        type: object
+        properties:
+          files:
+            type: array
+            items:
+              type: string
+              format: binary
+            description: |
+              The file(s) to be shared.
+              - File size limit: 50 MB
+              - Maximum number of files: 10
+          comments:
+            type: array
+            items:
+              type: string
+            description: The comments to be added for each file.
+          bot_unique_name:
+            type: string
+            description: Use this parameter to share a file in a channel as a bot. The bot should already be a participant in the channel.
+          bot_name:
+            type: string
+            description: To share the file with a custom name displayed as the sender.
+          bot_image:
+            type: string
+            format: uri
+            description: The URL of the image used as the sender's avatar or profile picture.
+        required:
+          - files
+        example: |
+                Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW<br>
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="file"; filename="zylker-sales.pdf"
+                Content-Type: application/pdf
+
+                Content of zylker-sales.pdf
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="file"; filename="revenue-chart.jpg"
+                Content-Type: image/jpeg
+
+                Content of revenue-chart.jpg
+
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW
+                Content-Disposition: form-data; name="comments"
+
+                ["Annual Zylker Sales Report","Revenue Chart for Q3"]
+                ------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Attachments.READ: Read Attachments
+            ZohoCliq.Webhooks.CREATE: Write and Modify Messages and Attachments
+ 

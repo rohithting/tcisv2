@@ -107,12 +107,20 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
               </button>
             )}
             
-            <div className="w-8 h-8 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm">
-              <span className="text-lg font-bold text-black ting-text">t</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm overflow-hidden">
+              {process.env.NEXT_PUBLIC_PLATFORM_LOGO_URL ? (
+                <img 
+                  src={process.env.NEXT_PUBLIC_PLATFORM_LOGO_URL} 
+                  alt={process.env.NEXT_PUBLIC_PLATFORM_NAME || 'TCIS'} 
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <span className="text-lg font-bold text-black ting-text">t</span>
+              )}
             </div>
             <div className="ml-3">
               <h1 className="text-lg font-bold brand-heading text-gray-900 dark:text-white">
-                <span className="ting-text">ting</span> TCIS
+                <span className="ting-text">ting</span> {process.env.NEXT_PUBLIC_PLATFORM_NAME || 'TCIS'}
               </h1>
             </div>
           </div>

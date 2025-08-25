@@ -1,0 +1,187 @@
+openapi: 3.0.0
+info:
+  title: Scheduled Messages
+  description: >
+    Scheduled messages are automatically sent to conversations at preferred times or based on user statuses, such as available, checked in, or after a call ends.
+    
+    Use this API to send scheduled messages.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: scheduledmessages
+    description: 'Scheduled Messages Module'
+
+paths:
+  /chats/{CHAT_ID}/scheduledmessages:
+    post:
+      summary: Send a scheduled message
+      description: >
+        Use this API to schedule a message for delivery at a future date and time.
+        <br><br>
+        <b>Threshold limit</b>: 50 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the chat in which the message needs to be scheduled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/scheduled-message-request-body'
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledMessageResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.messages.CREATE
+
+components:
+  schemas:
+    scheduled-message-request-body:
+      type: object
+      required:
+        - text
+      # oneOf:
+      #     - required: [schedule_time]
+      #     - required: [schedule_status]
+      properties:
+        text:
+          type: string
+          description: 'The text to be sent as a scheduled message.<br><b>Maximum Length</b> : 4096 characters'
+          example: Hello Ryan! Please provide an update on last month's sales!
+          required:
+            - text
+        schedule_time:
+          type: string
+          description: |
+            The scheduled execution time of the message.<br>
+            Allowed format : yyyyMMddTHHmmss (<b>iso8601basic time string</b>)<br>
+            <ul>
+            <li>yyyyMMdd - 2025-02-11 (Year:2025, Month:02, Day:11)</li>
+            <li>T - Separator indicating the start of the time componen</li>
+            <li>HHmmss - 09:00:00 (Hour:09, Minute:00, Second:00)</li>
+          example: 20250211T090000
+        schedule_status:
+          type: string
+          description: |
+                The scheduled execution time of the message.
+                <ul>
+                <li><b>check_in</b>: Schedule the message to be sent at the user's check-in time.</li>
+                <li><b>user_available</b>: Schedule the message to be sent when the user becomes available.</li>
+                <li><b>call_end</b>: Schedule the message to be sent after a call or meeting ends.</li>
+                <li><b>check_out</b>: Schedule the message to be sent at the user's check-out time.</li>
+                </ul>
+          example: user_available
+        schedule_timezone:
+          type: string
+          description: 'Timezone of the scheduled time (<b>IANA time zone name</b>).<br>Eg: Asia/Kolkata'
+          example: America/New_York
+
+    ScheduledMessageResponse:
+      type: object
+      properties:
+        time_string:
+          type: string
+          example: "20250211T114500"
+        creator:
+          type: string
+          example: "697322516"
+        message:
+          type: object
+          properties:
+            ctype:
+              type: integer
+              example: 8
+            channelData:
+              type: object
+              properties:
+                dn:
+                  type: string
+                  example: "#Tickets"
+                cn:
+                  type: string
+                  example: "#Tickets"
+            mtype:
+              type: integer
+              example: 12
+            msg:
+              type: string
+              example: "Hello Ryan! Please provide an update on last month's sales!"
+            dname:
+              type: string
+              example: "Priya Raman"
+            temp_info:
+              type: object
+              properties:
+                api:
+                  type: boolean
+                  example: true
+                bm:
+                  type: integer
+                  example: 1
+            sender:
+              type: string
+              example: "697322516"
+            language_detection_version:
+              type: integer
+              example: 4
+            detected_language:
+              type: string
+              example: "en"
+            includesenderinunread:
+              type: boolean
+              example: true
+            chid:
+              type: string
+              example: "CT_2243208015547740304_631836344"
+            meta:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                  example: 2
+            sync_message:
+              type: boolean
+              example: false
+        created_time:
+          type: integer
+          format: int64
+          example: 1739182862958
+        timezone:
+          type: string
+          example: "Asia/Kolkata"
+        time:
+          type: integer
+          format: int64
+          example: 1739254500000
+        id:
+          type: string
+          format: uuid
+          example: "55741379-fddf-476c-8093-c3e05bdf9006"
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.messages.CREATE: Create Messages

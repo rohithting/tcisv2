@@ -1,0 +1,178 @@
+openapi: 3.0.0
+info:
+  title: Custom Domain
+  description: >
+    Represent your brand name in place of Cliq default link by setting your own custom domain. For example, Zoho Cliq's domain is cliq.zoho.com. To verify a custom domain, check if the DNS value is correctly added to the domain registrar. Further verify it by checking the global DNS checker if the intended DNS record is available globally. To know more about custom domain head on over here.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: customdomain
+    description: 'Custom Domain Module'
+
+paths:
+
+  /customdomain:
+    get:
+      summary: Retrieve a custom domain
+      description: >
+        Use this API to get details about an individual custom domain.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Custom-Domain-Response'
+      security:
+        - Zoho_Auth:
+            -  ZohoCliq.Organisation.READ    
+
+    post: 
+      summary: Add a custom domain
+      description: >
+        Use this API to add a new custom domain.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Add-CustomDomainRequest'  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Custom-Domain-Response'
+      security:
+        - Zoho_Auth:
+            -  ZohoCliq.Organisation.CREATE   
+
+    put: 
+      summary: Verify a custom domain
+      description: >
+        Use this API to verify a custom domain.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Verify-CustomDomainRequest'  
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Custom-Domain-Response'
+      security:
+        - Zoho_Auth:
+            -  ZohoCliq.Organisation.UPDATE
+
+    delete: 
+      summary: Delete a custom domain
+      description: >
+        Use this API to delete a custom domain.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+      security:
+        - Zoho_Auth:
+            -  ZohoCliq.Organisation.DELETE
+
+
+
+components:
+  schemas:
+
+    no-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "204 No response"
+
+    Custom-Domain-Response:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "active"
+            name:
+              type: string
+              example: "chat.zylker.org"
+            ssl_enabled:
+              type: boolean
+              example: true
+
+    Add-CustomDomainRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of your choice for the custom domain.
+          example: "chat.zylker.org"
+
+    Verify-CustomDomainRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Verify the status of the custom domain as active or inactive.
+          example: "active"
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Profile.UPDATE: Update Profile
+            ZohoCliq.Profile.READ: Read Profile

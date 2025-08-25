@@ -196,12 +196,20 @@ function SidebarContent({
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center px-6 py-6 border-b border-gray-100 dark:border-gray-800">
-        <div className="w-10 h-10 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm">
-          <span className="text-xl font-bold text-black ting-text">t</span>
+        <div className="w-10 h-10 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm overflow-hidden">
+          {process.env.NEXT_PUBLIC_PLATFORM_LOGO_URL ? (
+            <img 
+              src={process.env.NEXT_PUBLIC_PLATFORM_LOGO_URL} 
+              alt={process.env.NEXT_PUBLIC_PLATFORM_NAME || 'TCIS'} 
+              className="w-full h-full object-contain"
+            />
+          ) : (
+            <span className="text-xl font-bold text-black ting-text">t</span>
+          )}
         </div>
         <div className="ml-4">
           <h1 className="text-xl font-bold brand-heading text-gray-900 dark:text-white">
-            <span className="ting-text">ting</span> TCIS
+            <span className="ting-text">ting</span> {process.env.NEXT_PUBLIC_PLATFORM_NAME || 'TCIS'}
           </h1>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             Chat Insight System

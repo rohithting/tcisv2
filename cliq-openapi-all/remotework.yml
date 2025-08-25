@@ -1,0 +1,387 @@
+openapi: 3.0.0
+info:
+  title: Remote Work
+  description: >
+    Remote Work in Cliq mimics your everyday office routine remotely. In a nutshell, remote work establishes a connect to your office ambience by mimicking your office setup with options to check-in and out, search and find who's available or in a meeting, enable live feed to see what your co-worker is upto and provides a seamless, productive remote work experience.<br><br>
+    Use the remote work APIs to get check in/check out and also get your remote work status.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: remotework
+    description: 'Remote Work Module'
+
+paths:
+
+  /me?source=remote_tools:
+    get:
+      summary: Get remote status
+      description: >
+        Use this API to get your remote status.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Remote-Status'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.READ
+            - ZohoPeople.forms.READ
+            - ZohoPeople.employee.READ
+            - ZohoPeople.attendance.READ
+            - ZohoPeople.attendance.UPDATE
+
+  /me/checkin:
+    put:
+      summary: Trigger Remote Check in
+      description: >
+        Use this API to check in remotely.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/checkin-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.UPDATE
+            - ZohoPeople.forms.READ
+            - ZohoPeople.employee.READ
+            - ZohoPeople.attendance.READ
+            - ZohoPeople.attendance.UPDATE
+
+  /me/checkout:
+    put:
+      summary: Trigger Remote Check out
+      description: >
+        Use this API to check out remotely.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/checkout-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Profile.UPDATE
+            - ZohoPeople.forms.READ
+            - ZohoPeople.employee.READ
+            - ZohoPeople.attendance.READ
+            - ZohoPeople.attendance.UPDATE        
+
+components:
+  schemas:
+
+    Remote-Status:
+      type: object
+      properties:
+        duration:
+          type: integer
+          example: 15021
+        location:
+          type: boolean
+          example: false
+        checkin_time:
+          type: integer
+          format: int64
+          example: 1678080540000
+        employee_id:
+          type: string
+          example: "10690"
+        first_name:
+          type: string
+          example: "John"
+        reportingto:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Scott Fisher"
+            id:
+              type: string
+              example: "3321451"
+            country:
+              type: string
+              example: "in"
+            email_id:
+              type: string
+              example: "scott.fisher@zylker.com"
+            status:
+              type: string
+              example: "samezohoorg"
+            zoid:
+              type: string
+              example: "123456"
+            timezone:
+              type: string
+              example: "Asia/Kolkata"
+            first_name:
+              type: string
+              example: "Scott"
+            full_name:
+              type: string
+              example: "Scott Fisher"
+            zuid:
+              type: string
+              example: "33155149"
+            display_name:
+              type: string
+              example: "Scott"
+            iamuid:
+              type: integer
+              example: 123456
+            last_name:
+              type: string
+              example: "Fisher"
+        checkin_status_text:
+          type: string
+          example: "Remote In"
+        mobile:
+          type: string
+          example: "9999999999"
+        type:
+          type: string
+          example: "paid"
+        zoid:
+          type: string
+          example: "456089"
+        live_feed_status:
+          type: string
+          example: "disabled"
+        iamuid:
+          type: integer
+          example: 12345678
+        organization_id:
+          type: string
+          example: "87610291"
+        email_id:
+          type: string
+          example: "ryan.west@zylker.com"
+        work_location:
+          type: string
+          example: "Mumbai"
+        recent_departments:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "Marketing"
+              time:
+                type: integer
+                format: int64
+                example: 1678094073202
+              id:
+                type: string
+                example: "3849429204820"
+        checkin_allowed:
+          type: boolean
+          example: true
+        zuid:
+          type: string
+          example: "12345678"
+        id:
+          type: string
+          example: "12345678"
+        timeoffset:
+          type: integer
+          example: 19800000
+        timezone:
+          type: string
+          example: "Asia/Kolkata"
+        language:
+          type: string
+          example: "English"
+        status:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "3"
+            message:
+              type: string
+              example: "Busy"
+        country:
+          type: string
+          example: "India"
+        department:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Marketing"
+            id:
+              type: string
+              example: "3849429204820"
+        last_name:
+          type: string
+          example: "West"
+        full_name:
+          type: string
+          example: "Ryan West"
+        designation:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Marketing Associate"
+            id:
+              type: string
+              example: "290939409389008"
+        checkin_status:
+          type: boolean
+          example: true
+        organisation_members_count:
+          type: integer
+          example: 500
+        image_url:
+          type: string
+          format: uri
+          example: "https://people.zoho.com/api/viewEmployeePhoto?filename=123412345676"
+        display_name:
+          type: string
+          example: "Ryan West"
+        name:
+          type: string
+          example: "Ryan West"
+
+    checkin-response:
+      type: object
+      properties:
+        checkin_allowed:
+          type: boolean
+          example: true
+        checkin_time:
+          type: integer
+          format: int64
+          example: 1678080540000
+        checkin_status_text:
+          type: string
+          example: "Remote In"
+        location:
+          type: boolean
+          example: false
+        checkin_status:
+          type: boolean
+          example: true
+        live_feed_status:
+          type: string
+          example: "disabled"
+        user_status_preference:
+          type: object
+          properties:
+            is_onboarded:
+              type: string
+              example: "1"
+            check_in:
+              type: object
+              properties:
+                status:
+                  type: object
+                  properties:
+                    status_id:
+                      type: string
+                      example: "1775998001162118795"
+                    message:
+                      type: string
+                      example: "Busy"
+                    code:
+                      type: string
+                      example: "busy"
+                preference:
+                  type: string
+                  example: "custom_status"
+        duration:
+          type: integer
+          example: 9564
+
+    checkout-response:
+      type: object
+      properties:
+        checkin_allowed:
+          type: boolean
+          example: true
+        checkin_time:
+          type: integer
+          format: int64
+          example: 1678080540000
+        checkin_status_text:
+          type: string
+          example: "Out"
+        location:
+          type: boolean
+          example: false
+        checkin_status:
+          type: boolean
+          example: false
+        live_feed_status:
+          type: string
+          example: "disabled"
+        user_status_preference:
+          type: object
+          properties:
+            check_out:
+              type: object
+              properties:
+                status:
+                  type: object
+                  properties:
+                    status_id:
+                      type: string
+                      example: "1775998001162118813"
+                    message:
+                      type: string
+                      example: "Away"
+                    code:
+                      type: string
+                      example: "away"
+                preference:
+                  type: string
+                  example: "custom_status"
+            is_onboarded:
+              type: string
+              example: "1"
+        duration:
+          type: integer
+          example: 9600
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Profile.UPDATE: Update Profile
+            ZohoCliq.Profile.READ: Read Profile

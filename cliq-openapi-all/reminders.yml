@@ -1,0 +1,976 @@
+openapi: 3.0.0
+info:
+  title: Reminders
+  description: >
+    Cliq's reminders help you keep track of essential tasks that you need to complete but don't want to forget.<br><br>
+    
+    They make micromanaging your tasks effortless. With these APIs, you can create, edit, and mark reminders as complete or incomplete, snooze, retrieve, and assign users to specific reminders.<br><br>
+    
+    You can create and assign reminders to yourself, a teammate or colleague, a chat, or a channel. Additionally, you can set a specific message in a chat as a reminder. Each type of reminder requires its own set of parameters to be included in the request body.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: reminders
+    description: 'Reminders Module'
+
+paths:
+  /reminders:
+    post:
+      summary: Set a self reminder
+      description: >
+        Use this API to set a self reminder.
+        <br><br>
+        <b>Threshold limit</b>: 50 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/self-reminder-request-body'
+              
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/self-reminder-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Reminders.CREATE
+            - ZohoCliq.Reminders.ALL
+
+    get:  
+      summary: Get list of all reminders
+      description: |
+        Use this API to retrieve details for all reminders. If no specific category is indicated, the API will return a list of reminders under the default category "mine." By default, the API provides a list of 20 reminders.<br><br>
+        <b>next_set_token</b>: This token will be issued in two scenarios:
+        <ol>
+        <li>If no limit is specified and there are more than 20 reminders in your list.</li>
+        <li>If you set a limit on the number of reminders to be retrieved, the token will be provided to access the next set of reminders. Please note that the token will be given only if the total number of reminders exceeds the limit you specified.</li>
+        </ol>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: |
+            Retrieves reminders from the specified category.<br>
+            <ul>
+            <li><b>mine</b>: Active reminders assigned to or created by the user (default).</li>
+            <li><b>mine-completed</b>: Completed reminders assigned to or created by the user.</li>
+            <li><b>others</b>: Active reminders created by the user for others (users or chats).</li>
+            <li><b>others-completed</b>: Completed reminders created by the user for others.</li>
+          example: 
+
+        - name: limit
+          in: query
+          schema:
+            type: number
+          description: Specify the number of reminders to be retrieved.
+          example: 30
+
+        - name: next_set_token
+          in: query
+          schema:
+            type: string
+          description: Specify this token to fetch the next set of reminders.
+          example: "eyJvZmZzZXQiOjIwLCJsaW1pdCI6MjB9"
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-reminders-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Reminders.CREATE
+            - ZohoCliq.Reminders.ALL
+
+
+  /reminders/{REMINDER_ID}:
+    get:
+      summary: Retrieve a reminder
+      description: |
+       Use this API to obtain details of a specific reminder by providing the reminder ID in the query. You can retrieve the reminder ID from the API's response that lists all reminders.<br><br>
+       <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder for which detailed information needs to be retrieved.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-reminder'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Reminders.READ
+            - ZohoCliq.Reminders.ALL      
+
+    put:
+      summary: Update a reminder
+      description: |
+       Use this API to edit the details of a specific reminder by providing the reminder ID. You can obtain the reminder ID from the API's response that lists all reminders.<br><br>
+       <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder which needs to be updated.
+
+      requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/update-reminder-request-body'
+                
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/update-reminder-response'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Reminders.UPDATE
+              - ZohoCliq.Reminders.ALL      
+
+    delete:
+      summary: Delete a reminder
+      description: |
+       Use this API to delete a particular reminder by giving the reminder ID. You can obtain the reminder ID from the API's response that lists all reminders.<br><br>
+       <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder which needs to be deleted.
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/no-response'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Reminders.DELETE
+              - ZohoCliq.Reminders.ALL 
+
+  /reminders/batch:
+    delete:
+      summary: Delete Reminders
+      description: |
+        Use this API to delete a list of reminders by providing the reminder IDs. You can obtain the reminder ID from the API's response that lists all reminders.<br><br>
+        <b>Note</b>: The maximum number of reminders that can be deleted at once is 20.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/delete-reminders-request-body'
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.DELETE
+                - ZohoCliq.Reminders.ALL 
+
+  /reminders/clearcompleted:
+    delete:
+      summary: Delete completed reminders
+      description: |
+        Use this API to delete the list of reminders that are marked as complete.<br><br>
+        <b>Threshold limit</b>: 10 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/delete-completed-reminders-request-body'
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL 
+
+  /reminders/{REMINDER_ID}/complete:
+    put:
+      summary: Mark a reminder as complete
+      description: |
+        Use this API to mark a reminder as complete by providing the reminder ID.<br><br>
+        <b>Note</b>: Reminders set for yourself (i.e falling under the mine category) can be marked as complete or incomplete.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder which needs to be marked as completed.
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL   
+
+  /reminders/{REMINDER_ID}/incomplete:
+    put:
+      summary: Mark a reminder as incomplete
+      description: |
+        Use this API to mark a reminder as incomplete by providing the reminder ID.<br><br>
+        <b>Note</b>: Reminders set for yourself (i.e falling under the mine category) can be marked as complete or incomplete.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder which needs to be marked as incomplete.
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL   
+
+  
+  /reminders/{REMINDER_ID}/snooze:
+    put:
+      summary: Snooze a reminder
+      description: |
+        Use this API to snooze a reminder by providing the reminder ID.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder which needs to be snoozed.
+
+      requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/snooze-reminder-request-body'    
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL                 
+
+  /reminders/{REMINDER_ID}/dismisssnooze:
+    put:
+      summary: Dismiss a snoozed reminder
+      description: |
+        Use this API to dismiss a snoozed reminder by providing the reminder ID.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the snoozed reminder which needs to be dismissed.
+
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL   
+
+  /reminders/{REMINDER_ID}/users:
+    post:
+      summary: Assign users to a reminder
+      description: |
+        Use this API to assign users to reminders. A maximum of 4 users can be assigned to a reminder.<br><br>
+        <b>Note</b>: This API will only work with reminders added in the Others category, i.e. reminders assigned by you to others.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder for which users needs to be assigned.
+
+      requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/assign-users-to-reminder-request-body'    
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/assign-user-reminder-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL  
+
+  /reminders/{REMINDER_ID}/users/{USER_ID}:
+    delete:
+      summary: Unassign a user from a reminder
+      description: |
+        Use this API to unassign users from a reminder, by providing their User ID.<br><br>
+        <b>Note</b>: This API will work with reminders added in the Others category, i.e. reminders assigned by you to others.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder for which users needs to be unassigned.
+
+        - name: USER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user who needs to be unassigned from the reminder. 
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/unassign-user-reminder-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL  
+
+  /reminders/{REMINDER_ID}/users/{USER_ID}/remind:
+    put:
+      summary: Remind assignee
+      description: |
+        Use this API to trigger a notification in Taz to a particular assignee who is yet to mark the reminder as complete.<br><br>
+        <b>Note</b>: This API will work with reminders added in the Others category, i.e. reminders assigned by you to others.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder for which needs to be notified via Taz bot.
+
+        - name: USER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user who needs to be reminded via Taz bot to mark the reminder as complete. 
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/remind-assignee-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL  
+
+  /reminders/{REMINDER_ID}/remind:
+    post:
+      summary: Remind assignees
+      description: |
+        Use this API to trigger a notification in Taz to a reminder's assignees who are yet to mark the reminder as complete.<br><br>
+        <b>Note</b>: This API will only work with reminders added in the Others category, i.e. reminders assigned by you to others.<br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: REMINDER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the reminder for which users needs to be notified via Taz bot.
+
+      requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/assign-users-to-reminder-request-body'    
+                  
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/remind-assignee-response'
+      security:
+            - Zoho_Auth:
+                - ZohoCliq.Reminders.UPDATE
+                - ZohoCliq.Reminders.ALL  
+
+                
+components:
+  schemas:
+    no-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "204 No response"
+
+    remind-assignee-response:       
+        type: object
+        properties:
+          deleted:
+            type: boolean
+            example: false
+          name:
+            type: string
+            example: Ryan West
+          completed:
+            type: boolean
+            example: false
+          id:
+            type: string
+            example: "2343536"
+     
+
+    delete-reminders-request-body:
+        type: object
+        required:
+          - reminder_ids
+        properties:
+          reminder_ids:
+            type: array
+            description: 'Unique IDs of the reminders to be deleted.<br><b>Maximum limit</b>: 20'
+            example: 
+              - "11360000000205005"
+              - "11360000000205009"
+
+    delete-completed-reminders-request-body:
+        type: object
+        required:
+          - category
+        properties:
+          category:
+            type: string
+            description: |
+              Indicates the category of completed reminders to be cleared.<br>
+              <ul>
+              <li><b>mine-completed</b>: Refers to completed reminders created by or assigned to the user.</li>
+              <li><b>others-completed</b>: Refers to completed reminders created for other users or chats.</li>
+            example: 
+              - "mine-completed"        
+                          
+
+    self-reminder-request-body:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: 'The content of the reminder.<br><b>Maximum Length</b> : 512 characters'
+          example: Content Review for ZylCal Conference
+        time:
+          type: number
+          description: The time at which the reminder should trigger.<br>Time should be given in milliseconds.
+          example: 1506571200000
+
+    snooze-reminder-request-body:
+      type: object
+      required:
+        - time
+      properties:
+        time:
+          type: integer
+          description: Indicates the amount of time (in milliseconds) to delay the reminder.<br>The snooze time will be applied to the current time and not the reminder due time.
+          example: 900000
+
+    assign-users-to-reminder-request-body:
+      type: object
+      required:
+        - user_ids
+      properties:
+        user_ids:
+          type: array
+          description: List of user IDs to whom this reminder will be assigned.
+          example:
+            - 7234192
+            - 2498713
+
+    update-reminder-request-body:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: 'The content of the reminder to be updated.<br><b>Maximum Length</b> : 512 characters'
+          example: Content Review for ZylCal Conference
+        time:
+          type: number
+          description: The new updated time to trigger the reminder.<br>Time should be given in milliseconds.
+          example: 1506571200000   
+
+    assign-user-reminder-response:
+        type: object
+        properties:
+          creation_time:
+            type: integer
+            example: 1506398400000
+            description: The timestamp when the reminder was created.
+          creator:
+            type: object
+            description: The user who created the reminder.
+            properties:
+              name:
+                type: string
+                example: Ryan West
+              id:
+                type: integer
+                example: 2343536
+          completed:
+            type: boolean
+            example: false
+            description: Indicates whether the reminder has been completed.
+          content:
+            type: string
+            example: Functionality Design Review Meeting
+            description: The content or subject of the reminder.
+          users:
+            type: array
+            description: List of users assigned to this reminder.
+            items:
+              type: object
+              properties:
+                deleted:
+                  type: boolean
+                  example: false
+                name:
+                  type: string
+                  example: Scott Fisher
+                completed:
+                  type: boolean
+                  example: false
+                id:
+                  type: string
+                  example: "1234567"
+          id:
+            type: string
+            example: "11360000000205013"
+            description: Unique identifier of the reminder.
+
+
+    unassign-user-reminder-response:
+        type: object
+        properties:
+          creation_time:
+            type: integer
+            example: 1506398400000
+            description: The timestamp when the reminder was created.
+          creator:
+            type: object
+            description: The user who created the reminder.
+            properties:
+              name:
+                type: string
+                example: Ryan West
+              id:
+                type: integer
+                example: 2343536
+          completed:
+            type: boolean
+            example: false
+            description: Indicates whether the reminder has been completed.
+          content:
+            type: string
+            example: Functionality Design Review Meeting
+            description: The content or subject of the reminder.
+          users:
+            type: array
+            description: List of users assigned to this reminder.
+            items:
+              type: object
+              properties:
+                deleted:
+                  type: boolean
+                  example: false
+                name:
+                  type: string
+                  example: Scott Fisher
+                completed:
+                  type: boolean
+                  example: false
+                id:
+                  type: string
+                  example: "1234567"
+          id:
+            type: string
+            example: "11360000000205013"
+            description: Unique identifier of the reminder.            
+
+
+    update-reminder-response:
+      type: object
+      properties:
+        creation_time:
+          type: integer
+          example: 1506398400000
+        creator:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Scott Fisher
+            id:
+              type: integer
+              example: 1234567
+        completed:
+          type: boolean
+          example: false
+        content:
+          type: string
+          example: Appathon submissions code and content review
+        time:
+          type: integer
+          example: 1506571200000
+        chats:
+          type: array
+          items:
+            type: object
+            properties:
+              completed:
+                type: boolean
+                example: false
+              chat_id:
+                type: string
+                example: "1277744356562927809"
+              title:
+                type: string
+                example: Zylker Appathon
+        id:
+          type: string
+          example: "11360000000207025"
+          
+
+
+    self-reminder-response:
+      type: object
+      properties:
+        creation_time:
+          type: integer
+          example: 1506398400000
+        creator:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Scott Fisher
+            id:
+              type: integer
+              example: 1234567
+        completed:
+          type: boolean
+          example: false
+        content:
+          type: string
+          example: Content Review for ZylCal
+        time:
+          type: integer
+          example: 1506571200000
+        users:
+          type: array
+          items:
+            type: object
+            properties:
+              deleted:
+                type: boolean
+                example: false
+              name:
+                type: string
+                example: Scott Fisher
+              completed:
+                type: boolean
+                example: false
+              id:
+                type: string
+                example: "1234567"
+        id:
+          type: string
+          example: "11360000000204007"
+
+    retrieve-reminder:
+      type: object
+      properties:
+        creation_time:
+          type: integer
+          example: 1506398400000
+        creator:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Scott Fisher
+            id:
+              type: integer
+              example: 1234567
+        completed:
+          type: boolean
+          example: false
+        content:
+          type: string
+          example: Appathon submissions review
+        time:
+          type: integer
+          example: 1506571200000
+        chats:
+          type: array
+          items:
+            type: object
+            properties:
+              completed:
+                type: boolean
+                example: false
+              chat_id:
+                type: string
+                example: "1277744356562927809"
+              title:
+                type: string
+                example: Zylker Appathon
+        id:
+          type: string
+          example: "11360000000204011"
+
+    get-reminders-response:
+      type: object
+      properties:
+        category:
+          type: string
+          example: mine
+          description: The category of reminders returned in the response.
+        list:
+          type: array
+          description: A list of reminder objects.
+          items:
+            type: object
+            properties:
+              creation_time:
+                type: integer
+                example: 1506398400000
+                description: The timestamp when the reminder was created.
+              creator:
+                type: object
+                description: The user who created the reminder.
+                properties:
+                  name:
+                    type: string
+                    example: Ryan West
+                  id:
+                    oneOf:
+                      - type: string
+                        example: "2343536"
+                      - type: integer
+                        example: 1234567
+              completed:
+                type: boolean
+                example: false
+                description: Indicates whether the reminder is marked as completed.
+              content:
+                type: string
+                example: Annual sales review report due tomorrow
+                description: The content or description of the reminder.
+              time:
+                type: integer
+                example: 1506571200000
+                description: Optional timestamp when the reminder is set to notify.
+              users:
+                type: array
+                description: List of users associated with the reminder.
+                items:
+                  type: object
+                  properties:
+                    deleted:
+                      type: boolean
+                      example: false
+                    name:
+                      type: string
+                      example: Scott Fisher
+                    completed:
+                      type: boolean
+                      example: false
+                    id:
+                      type: string
+                      example: "1234567"
+              id:
+                type: string
+                example: "11360000000204033"
+                description: Unique identifier of the reminder.
+              message:
+                type: object
+                description: Optional message context if the reminder is set on a message.
+                properties:
+                  sender_id:
+                    type: string
+                    example: "2343536"
+                  message_id:
+                    type: integer
+                    example: 1536853438313
+                  chat_id:
+                    type: string
+                    example: "CT_1277744254305568677_53600857"
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Reminders.CREATE: Create Reminders
+            ZohoCliq.Reminders.ALL: Create , Read , Update and Manage reminders

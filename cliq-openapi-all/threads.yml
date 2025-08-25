@@ -1,0 +1,761 @@
+openapi: 3.0.0
+info:
+  title: Threads
+  description: >
+    Threads are a new way to organize discussions in a channel by grouping messages by specific topics.
+    With threads, replies to channel messages can be organized in separate spaces.
+
+    You can use the Threads API to create threads, send messages, get and manage thread followers,
+    manage the thread's state (reopening or closing it), and retrieve threads from a specific channel,
+    among other functionalities.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: threads
+    description: 'Threads Module'
+
+paths:
+  /channels/{CHANNEL_ID}/message:
+    post:
+      summary: Create and send a thread message
+      description: >
+        Use this API to create a thread from a message sent in a channel.
+
+        **Threshold limit**: 50 requests per min per user  
+        Number of API calls allowed within a minute.
+
+        **Lock period**: 5 minutes  
+        Wait time before consecutive API requests.
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of a channel in which a thread needs to be created.
+        - name: bot_unique_name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Use this parameter to send a message in a channel as a bot.  
+            Note that the bot should already be a participant in the channel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/thread-creation-payload'
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/thread-creation-response'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+
+  /chats/{THREAD_CHAT_ID}/message:
+    post:
+      summary: Send a message to an existing thread
+      description: |
+            Use this API to send a message to an existing thread.
+            <ul>
+            <li>Use the <b>Retrieve Message API</b> to obtain the thread details.</li>
+            
+            <li>The response from the <b>Retrieve Message API</b> includes a <code>`thread_information`</code> object containing the <code>`chat_id`</code>.</li>
+           
+            <li>Use this <code>`chat_id`</code> as the <b>Thread Chat ID</b> for all thread-related API endpoints.</li>
+            </ul>
+            <br>
+            <b><u>Example response from Retrieve Message API:</u></b>
+            <br>
+            <code>
+            {
+              "sender": {
+                "name": "Scott Fisher",
+                "id": "12345678"
+              },
+              "id": "1629465328414_83277101498",
+              "time": 1629465328414,
+              "type": "text",
+              "content": {
+                "text": "Hello Guys!"
+              },
+              "thread_information": {
+                "is_follower": true,
+                "message_count": 19,
+                "follower_count": 2,
+                "thread_message_id": "1629426730589%2040288830613",
+                "title": "Daily Updates",
+                "chat_id": "CT_1256254372211218512_15067887-T-1256254377053952763"
+              }
+            }
+            </code>
+      parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Chat ID of the thread where the message should be sent.
+        - name: bot_unique_name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Use this parameter to send a message in a thread as a bot.  
+            Note that the bot should already be a participant in the channel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/send-message-in-thread-payload'
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/thread-creation-response'        
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+  /channels/{CHANNEL_ID}/threads:
+    get:
+      summary: Get threads of a channel
+      description: Use this API to retrieve all the threads in a chat.
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Channel ID from which the threads need to be retrieved.
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Determines the follow status of the threads to be retrieved.
+            <br>
+            Allowed values:
+            <ul>
+            <li><b>followed</b> – Returns only the threads the user is following.</li>
+            <li><b>not_followed</b> – Returns only the threads the user is not following.</li>
+            <li><b>all</b> – Returns all threads, regardless of follow status.</li>
+            </ul>
+            If the state parameter is not specified, the default value will be <b>all</b>.
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: >
+            Filters threads based on their current status.
+            <br>
+            Allowed values:
+            <ul>
+            <li><b>open</b> – Returns threads that are currently active or ongoing.</li>
+            <li><b>closed</b> – Returns threads that have been marked as closed or resolved.</li>
+            </ul>
+            If a type parameter is not specified, all threads in the parent chat will be returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/get-threads-payload'
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-threads-response'        
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Chats.READ
+  /channels/{CHANNEL_ID}: 
+    put:
+      summary: Auto follow
+      description: "Use this API to auto-follow all threads created in a channel..<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the channel from which threads should be automatically followed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/auto-follow-threads-payload'
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/auto-follow-threads-response'        
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Channels.UPDATE
+  /threads/{THREAD_CHAT_ID}/followers:
+    get:
+      summary: Get thread followers
+      description: "Use this API to get the followers of the thread.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description:  Chat ID of the thread for which the list of followers needs to be retrieved.
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-thread-followers-response'        
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Chats.READ    
+    post:
+      summary: Add followers to a thread
+      description: "Use this API to add one or more users as followers to an existing thread.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description:  Chat ID of the thread for which the list of followers needs to be added.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-followers-payload'
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'        
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Chats.UPDATE   
+
+    delete:
+      summary: Remove followers from a thread
+      description: Removes one or more specified users from the followers list of a given thread.
+      parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description:  Chat ID of the thread for which the list of followers needs to be removed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/remove-followers-payload'
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'        
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Chats.DELETE  
+
+  /threads/{THREAD_CHAT_ID}/nonfollowers:
+    get:
+      summary: Get non-followers of a thread
+      description: "Use this API to retrieve the list of channel members who are not currently following the specified thread.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description:  Chat ID of the thread for which the list of non-followers needs to be retrieved.
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-thread-followers-response'        
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Chats.READ              
+
+  /threads/{THREAD_CHAT_ID}/follow:
+      post:
+        summary: Join (follow) a thread
+        description: Allows the authenticated user to join a thread as a follower
+        parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: CHAT ID of the thread to which the authenticated user should be added as a follower.
+        responses:
+          '200':
+            description: A list of chats
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/post-message-in-a-channel-response'        
+        security:
+        - Zoho_Auth:
+            - ZohoCliq.Chats.UPDATE    
+
+  /threads/{THREAD_CHAT_ID}/unfollow:
+      post:
+        summary: Leave (unfollow) a thread
+        description: Allows the authenticated user to leave a thread they are currently following.
+        parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: CHAT ID of the thread to which the authenticated user should be removed as a follower.
+        responses:
+          '200':
+            description: A list of chats
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/post-message-in-a-channel-response'        
+        security:
+        - Zoho_Auth:
+            - ZohoCliq.Chats.UPDATE               
+
+  /threads/{THREAD_CHAT_ID}:
+    put:    
+      summary: Update the state of a thread
+      description: "Use this API to close or reopen a thread. This can be performed by a user or by a bot.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: CHAT ID of the thread whose state is to be updated (closed or reopened).
+
+        - name: bot_unique_name  
+          in: query
+          required: false
+          schema: 
+            type: string
+          description: To use when the action is to be performed by a bot that is already a participant in the channel.
+
+        - name: appkey  
+          in: query
+          required: false
+          schema: 
+            type: string
+          description: Must be provided if the specified bot is from an extension. This parameter is to be used along with <b>bot_unique_name</b>.
+      
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-state-of-thread-request'
+
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'        
+      security:
+        - Zoho_Auth:      
+            - ZohoCliq.Chats.UPDATE
+
+  /threads/{THREAD_CHAT_ID}/messages/main:
+    get:
+      summary: Get main message of a thread
+      description: "Use this API to retrieve the main message from which the thread was created.<br><br><b>Threshold limit</b> : 30 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: THREAD_CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The CHAT_ID of the thread whose main (original) message is to be retrieved.
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-main-message-response'        
+      security:
+        - Zoho_Auth:      
+            - ZohoCliq.Messages.READ
+
+components:
+  schemas:
+    post-message-in-a-channel-response:
+      type: object
+      properties:
+        Response Code:
+          type: string
+          example: "204 No response"
+
+    get-thread-followers-response:
+        type: object
+        properties:
+          data:
+            type: array
+            items:
+              type: object
+              properties:
+                user_id:
+                  type: string
+                  example: "15066855"
+                email_id:
+                  type: string
+                  format: email
+                  example: "scott.fisher@zylker.com"
+                name:
+                  type: string
+                  example: "Scott"
+            example:
+              - user_id: "15066855"
+                email_id: "scott.fisher@zylker.com"
+                name: "Scott"
+              - user_id: "15071629"
+                email_id: "mark.twine@zylker.com"
+                name: "Mark"
+
+
+    thread-creation-payload:
+      type: object
+      required:
+        - text
+        - thread_message_id
+      properties:
+        text:
+          type: string
+          description: |
+            Use this parameter to send a message in a chat.<br><b>Maximum length</b> : 5000
+          example: "Follow this thread for daily updates on ticket resolutions."
+        thread_message_id:
+          type: string
+          description: Use this parameter to enter the id of the message from which the thread should be created
+          example: "1599044334698_117280617320"
+        reply_to:
+          type: string
+          description: Use this parameter to reply to a message in a conversation. Retrieve the message ID using the get messages API.
+        post_in_parent:
+          type: boolean
+          description: Use this parameter to post the thread message in the parent chat as well (default value is taken as false).
+          example: true
+        thread_title:
+          type: string
+          description: Use this parameter to specify a title for the thread.
+          example: "Ticket Resolution Summary for the Day"
+        sync_message:
+          type: boolean
+          description: Use this parameter to post a message in a synchronous thread. If sync_message = true, the message_id will be returned as the response.
+          example: true
+    send-message-in-thread-payload:
+        type: object
+        required:
+          - text
+        properties:
+          text:
+            type: string
+            description: |
+              Use this parameter to send a message in a thread.<br><b>Maximum length</b> : 5000
+            example: "Let's automate these cases so we can address them during testing."
+          reply_to:
+            type: string
+            description: Use this parameter to reply to a message in a thread.
+          post_in_parent:
+            type: boolean
+            description: Use this parameter to post the thread message in the parent chat as well (default value is taken as false).
+            example: true
+          sync_message:
+            type: boolean
+            description: Use this parameter to post a message in a synchronous thread. If sync_message = true, the message_id will be returned as the response.
+            example: true  
+
+    thread-creation-response:
+      type: object
+      properties:
+        message_id:
+          type: string
+          example: "1275417686584_20804595296"
+
+    get-threads-payload: 
+      type: object
+      properties:
+        next_token:
+          type: string
+          description: Used for pagination. Pass the <b>next_token</b> received in the previous API response to retrieve the next set of results
+          example: "MTV8MTYxNjEzNTI3ODYzNnwxNzc1OTk4MDAxMTcwMDczMzAx"   
+        limit:
+          type: string
+          description: Specifies the maximum number of threads to be returned in the response.
+          example: "50"  
+
+    auto-follow-threads-payload:
+        type: object
+        properties:
+          auto_follow_threads:
+            type: string
+            description: Enables or disables the auto-follow threads option for the specified channel.<br> Allowed values:<ul><li><b>enable</b> – Automatically follow all threads in the channel.</li><li><b>disable</b> – Stop automatically following threads in the channel.</li></ul>
+            example: enable
+
+    add-followers-payload:
+        type: object
+        properties:
+          user_ids:
+            type: array
+            description: List of user IDs to be added as followers to the specified thread.
+            example: ["15067889","35068981","5120923"]
+
+    remove-followers-payload:
+        type: object
+        properties:
+          user_ids:
+            type: array
+            description: List of user IDs to be added as followers to the specified thread.
+            example: ["15067889","35068981","5120923"]   
+
+    update-state-of-thread-request:
+        type: object
+        properties:
+          action:
+            type: string
+            required:
+              - action
+            description: "The state to apply to the thread.<br>Allowed values:<ul><li><b>close</b> - To close the specified thread.</li><li><b>reopen</b> - To reopen a previously closed thread.</li></ul>"
+            example: close
+          
+
+    auto-follow-threads-response:
+        type: object
+        properties:
+          status:
+            type: string
+            example: "enabled"
+
+    get-threads-response:
+      type: object
+      properties:
+        url:
+          type: string
+          example: "/api/v2/threads"
+        next_token:
+          type: string
+          example: "MTV8MTYxNjEzNTI3ODYzNnwxNzc1OTk4MDAxMTcwMDczMzAx"
+        type:
+          type: string
+          example: "chat_thread"
+        sync_token:
+          type: string
+          example: "MTV8MTYyODgzNTQ3OTkyOHwxNzc1OTk4MDAxMTg2NzU5NDUx"
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              parent_chat_id:
+                type: string
+                example: "CT_9001245010012354810_3467821"
+              is_follower:
+                type: boolean
+                example: true
+              follower_count:
+                type: integer
+                example: 5
+              chat_id:
+                type: string
+                example: "CT_9001245010012354810_3467821-T-9001245010938461210"
+              last_message_information:
+                type: object
+                properties:
+                  sender_id:
+                    type: string
+                    example: "45321098"
+                  message_type:
+                    type: string
+                    example: "text"
+                  time:
+                    type: string
+                    format: date-time
+                    example: "2024-12-12T10:45:00+05:30"
+                  text:
+                    type: string
+                    example: "Final report has been uploaded to the portal."
+                  sender_name:
+                    type: string
+                    example: "Olivia Palmer"
+              title:
+                type: string
+                example: "Final Report Submission"
+              thread_message_id:
+                type: string
+                example: "1702119024356%2097654301123490"
+              parent_message_sender:
+                type: string
+                example: "673892104"
+              thread_state:
+                type: string
+                enum: [open, closed]
+                example: "open"
+
+    get-main-message-response:
+      type: object
+      properties:
+        is_read:
+          type: boolean
+          example: false
+        thread_state_info:
+          type: object
+          properties:
+            thread_state:
+              type: string
+              example: open
+        parent_resource_id:
+          type: string
+          example: Customer support
+        sender:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Zylker
+            id:
+              type: string
+              example: "15067889"
+        ack_key:
+          type: string
+          example: "1629426730133"
+        thread_message:
+          type: object
+          properties:
+            msg:
+              type: string
+              example: "Team, any update on this issue?"
+            lmsgtime:
+              type: string
+              example: "1629465324688"
+            msgid:
+              type: string
+              example: "1629465328058"
+            msguid:
+              type: string
+              example: "1629465328414%2083277101498"
+            is_read:
+              type: boolean
+              example: false
+            ctype:
+              type: integer
+              example: 11
+            sender:
+              type: string
+              example: "15066855"
+            threadmsg:
+              type: boolean
+              example: true
+            meta:
+              type: object
+              properties:
+                revision:
+                  type: integer
+                  example: 1
+            sequence_id:
+              type: integer
+              example: 19
+            id:
+              type: string
+              example: "1629465328414_83277101498"
+            time:
+              type: string
+              example: "1629465328414"
+            dname:
+              type: string
+              example: Zylker
+        thread_information:
+          type: object
+          properties:
+            is_follower:
+              type: boolean
+              example: true
+            message_count:
+              type: integer
+              example: 19
+            follower_count:
+              type: integer
+              example: 2
+            thread_message_id:
+              type: string
+              example: "1629426730589%2040288830613"
+            title:
+              type: string
+              example: Client slowness
+            chat_id:
+              type: string
+              example: "CT_1256254372211218512_15067887-T-1256254377053952763"
+        id:
+          type: string
+          example: "1629426730589_40288830613"
+        time:
+          type: integer
+          example: 1629426730589
+        type:
+          type: string
+          example: text
+        content:
+          type: object
+          properties:
+            text:
+              type: string
+              example: "Customer has reported performance issues with the web client experiencing lag."
+        revision:
+          type: integer
+          example: 2
+        
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Webhooks.CREATE: Post messages to your conversations directly or by using incoming webhooks
+            ZohoCliq.Chats.UPDATE: Modify Chats
+            ZohoCliq.Chats.DELETE: Delete Chats

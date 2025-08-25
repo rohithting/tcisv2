@@ -1,0 +1,772 @@
+openapi: 3.0.0
+info:
+  title: Users
+  description: >
+    Users are members of an organization registered in Cliq. The user object provides information about a user's profile, as detailed below.<br><br>
+    With the user API, you can retrieve all user information for the organization, add users, manage user details, and obtain team information.    
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: users
+    description: 'Users Module'
+
+paths:
+  /users:
+    post:
+      summary: Add Users
+      description: |
+        Use this API to add a new user or a list of new users.
+        <br><br>
+        <b>Threshold limit</b>: 5 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Users.CREATE
+
+    get:
+      summary: Retrieve all users
+      description: |
+        Use this API to get details of all the users.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: >
+            Use this parameter to fetch the list of users based on their current status.
+
+            <b>Allowed values:</b>
+            <ul>
+              <li><b>active</b> – User is currently active in the organization.</li>
+              <li><b>inactive</b> – User is manually marked as inactive.</li>
+              <li><b>pending</b> – Invitation sent, but user hasn't accepted yet.</li>
+              <li><b>imported_active</b> – User imported from another Zoho service and is active.</li>
+              <li><b>imported_inactive</b> – User imported but marked as inactive.</li>
+            </ul>
+          schema:
+            type: string
+            enum: [active, inactive, pending, imported_active, imported_inactive]
+
+        - name: plan_type
+          in: query
+          required: false
+          description: >
+            Use this parameter to filter users based on their subscription type.
+
+            <b>Allowed values:</b>
+            <ul>
+              <li><b>paid</b> – User is under a paid subscription plan.</li>
+              <li><b>free</b> – User is under a free version of the plan.</li>
+            </ul>
+          schema:
+            type: string
+            enum: [paid, free]
+
+        - name: fields
+          in: query
+          required: false
+          description: >
+            Use this parameter to specify which user fields to return.  
+            Multiple fields can be comma-separated. Use <code>fields=all</code> to return all fields.
+
+            <b>Allowed values:</b>
+            <ul>
+              <li><b>display_name</b> – Display name of the user.</li>
+              <li><b>mobile</b> – Mobile number of the user.</li>
+              <li><b>department</b> – Department the user belongs to.</li>
+              <li><b>designation</b> – Job title or role of the user.</li>
+              <li><b>all</b> – All available user fields will be returned.</li>
+            </ul>
+          schema:
+            type: string
+            enum: [display_name, mobile, department, designation, all]
+            example: display_name,mobile
+
+        - name: limit
+          in: query
+          required: false
+          description: The number of users to fetch. Maximum is 100.
+          schema:
+            type: integer
+            maximum: 100
+            example: 50
+
+        - name: search
+          in: query
+          required: false
+          description: >
+            A text string to search users by name or email address.  
+            If Zoho People is integrated, search includes all its user fields.
+          schema:
+            type: string
+            example: "scott"
+
+        - name: sort_by
+          in: query
+          required: false
+          description: >
+            Use this parameter to sort the users based on specific criteria.
+
+            <b>Allowed values:</b>
+            <ul>
+              <li><b>usage</b> – Sort users based on their activity or usage in Cliq.</li>
+            </ul>
+          schema:
+            type: string
+            enum: [usage]
+
+        - name: modified_after
+          in: query
+          required: false
+          description: >
+            Fetch users whose fields were modified after this timestamp.  
+            Only changes in the following fields are considered: Department, Designation, Employee ID, Extension, Reporting To, and Work Location.  
+            <br/><b>Note:</b> Only modifications within the last 7 days are available.
+          schema:
+            type: string
+            format: date-time
+            example: "2025-06-01T10:00:00Z"
+
+        - name: next_token
+          in: query
+          required: false
+          description: Use this token to paginate and retrieve the next batch of user results.
+          schema:
+            type: string
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/UserListResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Users.READ
+              - ZohoPeople.forms.READ
+              - ZohoPeople.employee.READ
+              - ZohoPeople.attendance.READ
+
+  /users/{USER_ID}:
+      get:
+        summary: Retrieve a particular user
+        description: |
+          Use this API to get details of a particular user.
+          <br><br>
+          <b>Threshold limit</b>: 20 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+        parameters:
+          - name: User ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the user to be retrieved.
+          
+          - name: fields
+            in: query
+            required: false
+            schema:
+              type: string
+            description: |
+              <ul>
+                <li>Use this parameter to fetch the list of user fields. If fields=all, returns all the user fields.</li>
+                <li><b>Allowed values</b> : display_name|mobile|department|designation.</li>
+                <li>You can enter multiple fields by seperating them with a comma.</li>
+              </ul>
+
+        responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/retrieve-user-response'
+        security:
+          - Zoho_Auth:
+              - ZohoCliq.Users.READ
+              - ZohoPeople.forms.READ
+              - ZohoPeople.employee.READ
+              - ZohoPeople.attendance.READ
+
+
+      put:
+        summary: Update user details
+        description: |
+          Use this API to edit or update a user's details.
+          <br><br>
+          <b>Threshold limit</b>: 20 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+        
+        parameters:
+          - name: User ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the user whose details needs to be updated.
+
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRequest'
+        responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/UserResponse'
+        security:
+          - Zoho_Auth:
+              - ZohoCliq.Users.UPDATE
+              - Profile.orguserphoto.UPDATE
+
+  /users/{USER_ID}/teams:
+    get:
+      summary: Fetch list of user teams
+      description: |
+          Use  this API to fetch the list of teams that the user belongs to. Head on over here to know more about team object attributes.
+          <br><br>
+          <b>Threshold limit</b>: 20 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+
+      parameters:
+          - name: User ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the user whose team information need to be retrieved.
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/TeamListResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Users.READ
+
+  /users/layout:
+    get:
+      summary: List user field layouts
+      description: |
+          Use this API to fetch the list layouts configured for user fields.
+          <br><br>
+          <b>Threshold limit</b>: 20 requests per min per user<br>
+          Number of API calls allowed within a minute.<br><br>
+
+          <b>Lock period</b>: 10 minutes<br>
+          Wait time before consecutive API requests.
+      parameters:
+        - name: unique_name
+          in: query
+          required: false
+          schema:
+              type: string
+          description: |
+            A unique name identifier for the user field layout.  
+            <b>Allowed values:</b>
+            <ul>
+              <li><b>quick_view</b> – Layout shown in hover cards.</li>
+              <li><b>profile_details_android</b> – Layout shown in the Android app user profile.</li>
+              <li><b>profile_details_ios</b> – Layout shown in the iOS app user profile.</li>
+              <li><b>profile_details_web</b> – Layout shown in the web version user profile.</li>
+            </ul>
+            
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/UserLayoutResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Users.READ
+
+components:
+  schemas:
+    UserRequest:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            type: object
+            required:
+              - email_id
+            properties:
+              email_id:
+                type: string
+                format: email
+                description: The email ID of the user. (Mandatory)
+                example: amy@zylker.com
+              first_name:
+                type: string
+                description: The first name of the user.
+                example: Amy
+              last_name:
+                type: string
+                description: Last name of the user.
+                example: Smith
+              display_name:
+                type: string
+                description: The display name of the user.
+                example: Amy Smith
+              phone:
+                type: string
+                description: Phone number of the user.
+                example: "04412345678"
+              mobile:
+                type: string
+                description: Mobile number of the user.
+                example: "9876543210"
+              timezone:
+                type: string
+                description: User's timezone.
+                example: Asia/Kolkata
+              language:
+                type: string
+                description: The user's default language.
+                example: en
+              country:
+                type: string
+                description: Country code of the user.
+                example: IN
+              designation_id:
+                type: string
+                description: Give the ID of the designation to be associated with the user.
+                example: D123456
+              department_id:
+                type: string
+                description: Give the ID of the department where the user will be added.
+                example: Dept789
+              reporting_to_zuid:
+                type: string
+                description: User ID of the user's reporting to.
+                example: ZU_1234567890
+              work_location:
+                type: string
+                description: Work location of the user.
+                example: Chennai Office
+              extension:
+                type: string
+                description: The user's extension/desk phone number.
+                example: "4021"
+              employee_id:
+                type: string
+                description: The user's employee ID.
+                example: EMP1234
+              image_data:
+                type: string
+                format: byte
+                description: The profile picture of the user in Base64 format.
+              channel_ids:
+                type: array
+                description: IDs of the channels in which the user will be added.
+                items:
+                  type: string
+                example: ["O1864232000000076001", "02436281894678923571"]
+              team_ids:
+                type: array
+                description: IDs of the teams where the user will be added.
+                items:
+                  type: string
+                example: ["674269993", "122347899"]
+              Custom Field's Uniquename:
+                type: string
+                description: |
+                  Unique name of the custom user fields.
+                  <ul>
+                  <li><b>Note</b>: This is not a static value; it can change according to the name assigned by the user.</li>
+                  <li>Example</b>: For a custom user field "Workplace Name",the unique name ( workplace_name ) of the field must be provided an attribute.</li>
+                  </ul>
+
+    UserResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            success_users:
+              type: array
+              items:
+                type: string
+              example:
+                - amy@zylker.com
+                - riyaan@zylker.com
+            failed_users:
+              type: object
+              additionalProperties:
+                type: string
+              example: {}
+
+    retrieve-user-response:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            employee_id:
+              type: string
+              example: "213"
+            first_name:
+              type: string
+              example: Scott
+            reportingto:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Tim Harrison
+                id:
+                  type: string
+                  example: "631831446"
+            mobile:
+              type: string
+              example: "534 678 1234"
+            zoid:
+              type: string
+              example: "54107592"
+            organization_id:
+              type: string
+              example: "631836344"
+            email_id:
+              type: string
+              format: email
+              example: scott.fisher@zylker.com
+            extension:
+              type: string
+              example: "3129"
+            work_location:
+              type: string
+              example: C block, S-H12
+            id:
+              type: string
+              example: "631830849"
+            timeoffset:
+              type: integer
+              example: 19800000
+            timezone:
+              type: string
+              example: Asia/Kolkata
+            language:
+              type: string
+              example: English
+            status:
+              type: string
+              example: active
+            country:
+              type: string
+              example: United States
+            department:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Zylker Corp
+                id:
+                  type: string
+                  example: "1901318000001424001"
+            last_name:
+              type: string
+              example: Fisher
+            full_name:
+              type: string
+              example: Scott Fisher
+            designation:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Leadership Staff
+                id:
+                  type: string
+                  example: "1901318000001072003"
+            display_name:
+              type: string
+              example: Scott Fisher
+            name:
+              type: string
+              example: Scott Fisher
+
+    UserListResponse:
+      type: object
+      properties:
+        next_token:
+          type: string
+          example: "359868eb5dca56ghs721hak082ynoy85hakqovfewjbf41533"
+        has_more:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              email_id:
+                type: string
+                format: email
+              zuid:
+                type: string
+              zoid:
+                type: string
+              display_name:
+                type: string
+              name:
+                type: string
+              organization_id:
+                type: string
+              id:
+                type: string
+          example:
+            - email_id: yoda@zylker.com
+              zuid: "163315760"
+              zoid: "54107592"
+              display_name: "Yod"
+              name: "Yod Agbaria"
+              organization_id: "631836344"
+              id: "163315760"
+            - email_id: noweit@zylker.com
+              zuid: "163317679"
+              zoid: "54107592"
+              display_name: "No-Wei"
+              name: "No-Wei Ting"
+              organization_id: "631836344"
+              id: "163317679"
+
+    TeamListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              creation_time:
+                type: string
+                format: date-time
+              organization_id:
+                type: string
+              is_active:
+                type: boolean
+              is_moderator:
+                type: boolean
+              description:
+                type: string
+              team_id:
+                type: integer
+              joined:
+                type: boolean
+              participant_count:
+                type: integer
+          example:
+            - name: Zylcal
+              creation_time: "2017-10-19T08:36:24-07:00"
+              organization_id: "54107592"
+              is_active: true
+              is_moderator: true
+              description: Team working on the Zylker Calendar
+              team_id: 655249742
+              joined: true
+              participant_count: 9
+            - name: Zylker Website Revamp
+              creation_time: "2019-09-05T21:31:30-07:00"
+              organization_id: "54107592"
+              is_active: true
+              is_moderator: true
+              description: To revamp Zylker's Website
+              team_id: 695903787
+              joined: true
+              participant_count: 5
+            - name: Zylnotes
+              creation_time: "2019-09-06T04:18:56-07:00"
+              organization_id: "54107592"
+              is_active: true
+              is_moderator: true
+              description: Team for Zylnotes Project
+              team_id: 695920980
+              joined: true
+              participant_count: 6
+
+    UserLayoutResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              unique_name:
+                type: string
+                example: profile_details_android
+              sections:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    sequence_number:
+                      type: integer
+                      example: 1
+                    label:
+                      type: string
+                      example: Work
+                    unique_name:
+                      type: string
+                      example: work_info
+                    system_defined:
+                      type: boolean
+                      example: true
+                    fields:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: enabled
+                          sequence_number:
+                            type: integer
+                            example: 1
+                          label:
+                            type: string
+                            example: Designation
+                          unique_name:
+                            type: string
+                            example: designation
+                          system_defined:
+                            type: boolean
+                            example: true
+                          id:
+                            type: string
+                            example: "1901318000001264017"
+      example:
+        data:
+          - unique_name: profile_details_android
+            sections:
+              - sequence_number: 1
+                label: Work
+                unique_name: work_info
+                system_defined: true
+                fields:
+                  - status: enabled
+                    sequence_number: 1
+                    label: Designation
+                    unique_name: designation
+                    system_defined: true
+                    id: "1901318000001264017"
+                  - status: enabled
+                    sequence_number: 2
+                    label: Department
+                    unique_name: department
+                    system_defined: true
+                    id: "1901318000001264015"
+                  - status: enabled
+                    sequence_number: 3
+                    label: Reporting To
+                    unique_name: reportingto
+                    system_defined: true
+                    id: "1901318000001264023"
+                  - status: enabled
+                    sequence_number: 4
+                    label: Seating Location
+                    unique_name: work_location
+                    system_defined: true
+                    id: "1901318000001264005"
+                  - status: enabled
+                    sequence_number: 5
+                    label: Employee ID
+                    unique_name: employee_id
+                    system_defined: true
+                    id: "1901318000001264013"
+                  - status: enabled
+                    sequence_number: 6
+                    label: Status
+                    unique_name: status
+                    system_defined: true
+                    id: "1901318000001468001"
+              - sequence_number: 2
+                label: Contact
+                unique_name: contact_info
+                system_defined: true
+                fields:
+                  - status: enabled
+                    sequence_number: 1
+                    label: Phone
+                    unique_name: phone
+                    system_defined: true
+                    id: "1901318000001705005"
+                  - status: enabled
+                    sequence_number: 2
+                    label: Mobile
+                    unique_name: mobile
+                    system_defined: true
+                    id: "1901318000001264003"
+                  - status: enabled
+                    sequence_number: 3
+                    label: Email
+                    unique_name: email_id
+                    system_defined: true
+                    id: "1901318000001264011"
+                  - status: enabled
+                    sequence_number: 4
+                    label: Extension
+                    unique_name: extension
+                    system_defined: true
+                    id: "1901318000001264019"
+
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+             ZohoCliq.Users.CREATE: Add Users

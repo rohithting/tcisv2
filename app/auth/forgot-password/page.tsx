@@ -140,7 +140,7 @@ export default function ForgotPasswordPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}
-              placeholder="rohith.namboothiri@ting.in"
+              placeholder="user@ting.in"
               startIcon={<EnvelopeIcon className="h-5 w-5" />}
               helperText="Enter the email address associated with your account"
               fullWidth

@@ -22,12 +22,18 @@ import {
   ClockIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
+  LinkIcon,
+  WifiIcon,
+  ArrowPathIcon as RefreshIcon,
+  ExclamationTriangleIcon as AlertIcon,
   GlobeAltIcon,
   BuildingOfficeIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
+import { ZohoChannelSelector } from '@/components/zoho/ZohoChannelSelector';
+import { ZohoChannelOption } from '@/types/zoho';
 
 interface Room {
   id: number;
@@ -40,6 +46,9 @@ interface Room {
   status: 'active' | 'inactive';
   total_messages?: number;
   latest_upload?: string;
+  zoho_mapping_id?: string | null;
+  zoho_channel_name?: string | null;
+  zoho_sync_status?: 'active' | 'paused' | 'error' | null;
 }
 
 interface Client {
@@ -83,6 +92,10 @@ export default function ClientRoomsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'internal' | 'external'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showZohoSelector, setShowZohoSelector] = useState(false);
+  const [selectedRoomForZoho, setSelectedRoomForZoho] = useState<Room | null>(null);
+  const [syncingRooms, setSyncingRooms] = useState<Set<number>>(new Set());
+  const [zohoIntegrationAvailable, setZohoIntegrationAvailable] = useState(false);
 
   // Fetch data from database
   const fetchData = async () => {
@@ -115,23 +128,79 @@ export default function ClientRoomsPage() {
         is_active: clientData.is_active as boolean, // Changed from status to is_active
       });
 
-      // Fetch rooms with upload counts and statistics
-      const { data: roomsData, error: roomsError } = await supabase
-        .from('rooms')
-        .select(`
-          id,
-          name,
-          room_type,
-          description,
-          is_active,
-          created_at,
-          uploads (
+      // Check if Zoho integration is available
+      let zohoIntegrationAvailable = false;
+      try {
+        // Test if zoho_channel_mappings table exists and has relationship with rooms
+        const testQuery = await supabase
+          .from('rooms')
+          .select('id, zoho_mapping_id')
+          .limit(1);
+        
+        // If the query succeeds, Zoho integration is available
+        if (!testQuery.error) {
+          zohoIntegrationAvailable = true;
+        }
+      } catch (error) {
+        console.log('Zoho integration not available, using basic query');
+        zohoIntegrationAvailable = false;
+      }
+
+      setZohoIntegrationAvailable(zohoIntegrationAvailable);
+
+      // Fetch rooms with appropriate query based on Zoho availability
+      let roomsData, roomsError;
+      
+      if (zohoIntegrationAvailable) {
+        // Fetch with Zoho mapping info
+        const result = await supabase
+          .from('rooms')
+          .select(`
             id,
+            name,
+            room_type,
+            description,
+            is_active,
+            created_at,
+            zoho_mapping_id,
+            uploads (
+              id,
+              created_at
+            ),
+            zoho_channel_mappings (
+              id,
+              zoho_channel_name,
+              sync_status,
+              last_sync_at
+            )
+          `)
+          .eq('client_id', clientId)
+          .order('created_at', { ascending: false });
+          
+        roomsData = result.data;
+        roomsError = result.error;
+      } else {
+        // Fetch basic room data without Zoho columns
+        const result = await supabase
+          .from('rooms')
+          .select(`
+            id,
+            name,
+            room_type,
+            description,
+            is_active,
+            created_at,
+            uploads (
+              id,
               created_at
             )
           `)
           .eq('client_id', clientId)
           .order('created_at', { ascending: false });
+          
+        roomsData = result.data;
+        roomsError = result.error;
+      }
 
       if (roomsError) throw roomsError;
 
@@ -147,6 +216,9 @@ export default function ClientRoomsPage() {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0];
 
+        // Get Zoho mapping info (if available)
+        const zohoMapping = room.zoho_channel_mappings?.[0];
+
         return {
           id: room.id,
           name: room.name,
@@ -158,6 +230,9 @@ export default function ClientRoomsPage() {
           status: room.is_active ? 'active' : 'inactive',
           total_messages: totalMessages, // Not available in current schema
           latest_upload: latestUpload?.created_at || null,
+          zoho_mapping_id: room.zoho_mapping_id || null,
+          zoho_channel_name: zohoMapping?.zoho_channel_name || null,
+          zoho_sync_status: zohoMapping?.sync_status || null,
         };
       });
 
@@ -175,6 +250,77 @@ export default function ClientRoomsPage() {
   useEffect(() => {
     fetchData();
   }, [clientId, supabase]); // Add supabase to dependencies
+
+  const handleZohoMapRequest = (room: Room) => {
+    if (!zohoIntegrationAvailable) {
+      toast.error('Zoho Cliq integration is not available. Please apply the database migrations.');
+      return;
+    }
+    if (room.type !== 'internal') {
+      toast.error('Only internal rooms can be mapped to Zoho Cliq channels');
+      return;
+    }
+    if (room.zoho_mapping_id) {
+      toast.error('This room is already mapped to a Zoho Cliq channel');
+      return;
+    }
+    setSelectedRoomForZoho(room);
+    setShowZohoSelector(true);
+  };
+
+  const handleZohoChannelSelected = async (channel: ZohoChannelOption) => {
+    try {
+      toast.success(`Successfully mapped "${channel.name}" to "${selectedRoomForZoho?.name}"`);
+      // Refresh the rooms list to show the new mapping
+      await fetchData();
+    } catch (error) {
+      console.error('Error after channel mapping:', error);
+    } finally {
+      setSelectedRoomForZoho(null);
+    }
+  };
+
+  const handleRetrySync = async (room: Room) => {
+    if (!zohoIntegrationAvailable || !room.zoho_mapping_id) return;
+
+    try {
+      setSyncingRooms(prev => new Set(prev).add(room.id));
+
+      const response = await fetch('/api/functions/zoho-sync-trigger', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          mapping_id: room.zoho_mapping_id,
+          full_sync: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Sync failed');
+      }
+
+      toast.success(`Sync initiated for "${room.name}"`);
+      
+      // Refresh rooms data after a short delay to show updated status
+      setTimeout(() => {
+        fetchData();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error retrying sync:', error);
+      toast.error(`Failed to retry sync: ${error.message}`);
+    } finally {
+      setSyncingRooms(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(room.id);
+        return newSet;
+      });
+    }
+  };
 
   const filteredRooms = rooms.filter(room => {
     const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -302,7 +448,16 @@ export default function ClientRoomsPage() {
         ) : (
           <div className="space-y-4">
             {filteredRooms.map((room) => (
-              <RoomCard key={room.id} room={room} clientId={clientId} router={router} />
+              <RoomCard 
+                key={room.id} 
+                room={room} 
+                clientId={clientId} 
+                router={router}
+                onZohoMapRequest={handleZohoMapRequest}
+                onRetrySync={handleRetrySync}
+                isSyncing={syncingRooms.has(room.id)}
+                zohoIntegrationAvailable={zohoIntegrationAvailable}
+              />
             ))}
           </div>
         )}
@@ -318,6 +473,21 @@ export default function ClientRoomsPage() {
             // Refresh the rooms list
             fetchData();
           }}
+        />
+      )}
+
+      {/* Zoho Channel Selector Modal */}
+      {showZohoSelector && selectedRoomForZoho && zohoIntegrationAvailable && (
+        <ZohoChannelSelector
+          isOpen={showZohoSelector}
+          onClose={() => {
+            setShowZohoSelector(false);
+            setSelectedRoomForZoho(null);
+          }}
+          onChannelSelect={handleZohoChannelSelected}
+          clientId={clientId}
+          roomId={selectedRoomForZoho.id}
+          roomName={selectedRoomForZoho.name}
         />
       )}
     </DashboardLayout>
@@ -359,9 +529,13 @@ interface RoomCardProps {
   room: Room;
   clientId: number;
   router: any;
+  onZohoMapRequest: (room: Room) => void;
+  onRetrySync: (room: Room) => void;
+  isSyncing: boolean;
+  zohoIntegrationAvailable: boolean;
 }
 
-function RoomCard({ room, clientId, router }: RoomCardProps) {
+function RoomCard({ room, clientId, router, onZohoMapRequest, onRetrySync, isSyncing, zohoIntegrationAvailable }: RoomCardProps) {
   const typeColors = {
     internal: 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400',
     external: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400',
@@ -411,6 +585,60 @@ function RoomCard({ room, clientId, router }: RoomCardProps) {
                   {room.description}
                 </p>
               )}
+              
+              {/* Zoho Mapping Status */}
+              {room.type === 'internal' && zohoIntegrationAvailable && (
+                <div className="mt-2">
+                  {room.zoho_mapping_id ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className={cn(
+                          "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
+                          isSyncing
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                            : room.zoho_sync_status === 'active' 
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                            : room.zoho_sync_status === 'error'
+                            ? "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400"
+                        )}>
+                          {isSyncing ? (
+                            <RefreshIcon className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <WifiIcon className="h-3 w-3" />
+                          )}
+                          <span>
+                            {isSyncing ? 'Syncing...' :
+                             room.zoho_sync_status === 'active' ? 'Active' : 
+                             room.zoho_sync_status === 'error' ? 'Error' : 'Paused'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          → {room.zoho_channel_name}
+                        </span>
+                      </div>
+                      
+                      {room.zoho_sync_status === 'error' && !isSyncing && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRetrySync(room);
+                          }}
+                          className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium flex items-center space-x-1"
+                        >
+                          <RefreshIcon className="h-3 w-3" />
+                          <span>Retry</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400">
+                      <LinkIcon className="h-3 w-3" />
+                      <span>Not mapped to Zoho Cliq</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -438,6 +666,19 @@ function RoomCard({ room, clientId, router }: RoomCardProps) {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Zoho Map Button for Internal Rooms */}
+            {room.type === 'internal' && !room.zoho_mapping_id && zohoIntegrationAvailable && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => onZohoMapRequest(room)}
+                className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300"
+              >
+                <LinkIcon className="h-4 w-4 mr-1" />
+                Map to Zoho
+              </Button>
+            )}
+            
             <Button 
               variant="outline" 
               size="sm"

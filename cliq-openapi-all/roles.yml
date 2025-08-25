@@ -1,0 +1,652 @@
+openapi: 3.0.0
+info:
+  title: Roles
+  description: >
+    You can set up roles for a group of users and configure distinct access permissions for various features in Zoho Cliq.
+    However, you must be an admin to access these APIs.
+
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: roles
+    description: 'Roles Module'
+
+paths:
+  /profiles:
+    get:
+      summary: Get Roles
+      description: |
+        Use this API to fetch all available roles in your organization
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.<br><br>
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfilesResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Organisation.READ
+
+
+    post:
+      summary: Create a Role
+      description: |
+        Use this API to create a custom role in your organization.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCreationRequest'
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/RoleCreationResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.CREATE
+
+  /profiles/{PROFILE_ID}:
+    get:
+      summary: Retrieve role details
+      description: |
+        Use this API to retrieve detailed information about a specific role.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: PROFILE_ID
+          in: path
+          required: true
+          description: Unique identifier of the role to be retrieved.
+          schema:
+            type: string
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleDetailResponse'  
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.READ
+
+    put:
+      summary: Edit a Role
+      description: |
+        Use this API to update a role in your organization.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: PROFILE_ID
+          in: path
+          required: true
+          description: Unique identifier of the role to be modified.
+          schema:
+            type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/no-response'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.UPDATE
+
+    delete:
+      summary: Delete a Role
+      description: |
+        Use this API to delete a role in your organization.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: PROFILE_ID
+          in: path
+          required: true
+          description: Unique identifier of the role to be deleted.
+          schema:
+            type: string
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/no-response'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.DELETE
+
+  /profiles/{PROFILE_ID}/permissions:
+    get:
+      summary: Get permissions of a role
+      description: |
+        Use this API to get the permissions of a role in your organization.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: PROFILE_ID
+          in: path
+          required: true
+          description: Unique identifier of the role for which permission details need to be retrieved.
+          schema:
+            type: string
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/RolePermissionResponse'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.READ
+
+    put:
+      summary: Update permissions of a role
+      description: |
+        Use this API to update a role in your organization.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/UpdatePermissionRequest'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.UPDATE  
+
+  /profiles/{PROFILE_ID}/users:
+    get:
+      summary: Get users in a role
+      description: |
+        Use this API to get all the users in a specific role.
+        <br><br>
+        <b>Threshold limit</b>: 30 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: PROFILE_ID
+          in: path
+          required: true
+          description: Unique identifier of the role of which matched users need to be retrieved.
+          schema:
+            type: string
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/UserIdsResponse'
+
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.READ  
+
+    post:
+      summary: Add users to a role
+      description: |
+        Use this API to add users to a specific role.
+        <br><br>
+        <b>Threshold limit</b>: 10 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: PROFILE_ID
+          in: path
+          required: true
+          description: Unique identifier of the role for which users need to be added.
+          schema:
+            type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/addUsers'      
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/no-response'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.UPDATE  
+
+    delete:
+      summary: Delete users from a role
+      description: |
+        Use this API to delete users from a specific role.
+        <br><br>
+        <b>Threshold limit</b>: 10 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+        - name: PROFILE_ID
+          in: path
+          required: true
+          description: Unique identifier of the role for which users need to be removed.
+          schema:
+            type: string
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/addUsers'      
+
+      responses:
+          '200':
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/no-response'
+      security:
+          - Zoho_Auth:
+              - ZohoCliq.Organisation.DELETE  
+
+
+components:
+  schemas:
+
+    no-response:
+      type: object
+      properties:
+        Response Code:
+          type: string
+          example: "204 No response"
+
+    addUsers:
+      type: object
+      properties:
+        user_ids:
+            type: array
+            description: The list of user IDs
+            items:
+              type: string
+            example:
+              - "62913657"
+              - "63569660"
+              - "67580202"
+      required:
+          - user_ids
+
+
+    UserIdsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              user_id:
+                type: string
+                example: "62913657"
+      example:
+        data:
+          - user_id: "62913657"
+          - user_id: "63569660"
+          - user_id: "67580202"
+      
+
+    UpdatePermissionRequest:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            type: object
+            properties:
+              module:
+                type: string
+                description: Name of the module to be updated
+                example: organisation_member
+              action:
+                type: string
+                description: Action of the module to be updated with status
+                example: attachments
+              status:
+                type: string
+                description: Status of the module to be updated
+                example: disabled
+              configs:
+                type: array
+                description: An array of the name and value of profile configurations to be updated
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: profile_based_restricted_reply_time_frame
+                    value:
+                      type: integer
+                      example: 345600000
+      example:
+        list:
+          - module: organisation_member
+            action: attachments
+            status: disabled
+          - module: direct_message
+            configs:
+              - name: profile_based_restricted_reply_time_frame
+                value: 345600000
+      
+
+    UpdateRoleRequest:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Updated name of the role.
+            example: "Product Marketing Manager"
+          description:
+            type: string
+            description: Updated description of the role.
+            example: "Role for users managing product marketing campaigns and strategies."
+        required:
+          - name
+          - description
+
+    RolePermissionResponse:
+      type: object
+      properties:
+        group_audio_call:
+          type: object
+          properties:
+            is_admin_module:
+              type: boolean
+              example: false
+            status:
+              type: string
+              example: enabled
+            actions:
+              type: object
+              properties:
+                start:
+                  type: string
+                  example: enabled
+      example:
+        group_audio_call:
+          is_admin_module: false
+          status: enabled
+          actions:
+            start: enabled
+
+
+
+    UserProfilesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              is_custom_admin:
+                type: boolean
+                example: false
+              name:
+                type: string
+                example: Admin
+              creation_time:
+                type: string
+                format: date-time
+                example: "2020-08-10T12:27:35+05:30"
+              last_modified_time:
+                type: string
+                format: date-time
+                example: "2020-08-10T12:27:35+05:30"
+              organization_id:
+                type: string
+                example: "62914174"
+              is_default:
+                type: boolean
+                example: true
+              profile_type:
+                type: string
+                example: Admin
+              id:
+                type: string
+                example: "42405000000004047"
+              description:
+                type: string
+                example: "123"
+      example:
+        data:
+          - is_custom_admin: false
+            name: Admin
+            creation_time: "2020-08-10T12:27:35+05:30"
+            last_modified_time: "2020-08-10T12:27:35+05:30"
+            organization_id: "62914174"
+            is_default: true
+            profile_type: Admin
+            id: "42405000000004047"
+          - is_custom_admin: false
+            name: Members
+            creation_time: "2020-08-10T12:27:35+05:30"
+            last_modified_time: "2020-08-10T12:27:35+05:30"
+            organization_id: "62914174"
+            is_default: true
+            profile_type: Members
+            id: "42405000000004049"
+          - is_custom_admin: false
+            name: Test Member
+            creation_time: "2022-02-17T15:37:39+05:30"
+            last_modified_time: "2022-02-17T15:37:39+05:30"
+            organization_id: "62914174"
+            is_default: false
+            profile_type: Members
+            id: "42405000000189003"
+            description: "123"
+
+    RoleCreationRequest:
+      type: object
+      required:
+        - name
+        - profile_type
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: Name of the role to be created.
+          example: Marketing
+        profile_type:
+          type: string
+          description: >
+            Type of the role. Allowed values:
+            <ul>
+              <li><b>Members</b> – No admin access</li>
+              <li><b>Cliq Admin</b> – Admin access without organization resource access</li>
+              <li><b>Admin</b> – Full admin access</li>
+            </ul>
+          example: Cliq Admin
+        user_ids:
+          type: array
+          items:
+            type: string
+          description: Array of user IDs to be added to the created role.
+          example: ["67579763"]
+        description:
+          type: string
+          description: Description of the role.
+          example: Role for Marketing members
+        clone_id:
+          type: string
+          description: Role ID from which permissions should be copied.
+          example: "42405000000223003"
+
+
+    RoleCreationResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+              example: Marketing
+            id:
+              type: string
+              example: 42405000000224001
+            profile_type:
+              type: string
+              example: Cliq Admin
+            creation_time:
+              type: string
+              format: date-time
+              example: 2022-05-16T18:03:51+05:30
+            last_modified_time:
+              type: string
+              format: date-time
+              example: 2022-05-16T18:03:51+05:30
+            organization_id:
+              type: string
+              example: 62914174
+            is_default:
+              type: boolean
+              example: false
+            description:
+              type: string
+              example: Role for Marketing members
+            is_custom_admin:
+              type: boolean
+              example: true
+
+    RoleDetailResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Marketing"
+            id:
+              type: string
+              example: "42405000000224001"
+            profile_type:
+              type: string
+              example: "Cliq Admin"
+            creation_time:
+              type: string
+              format: date-time
+              example: "2022-05-16T18:03:51+05:30"
+            last_modified_time:
+              type: string
+              format: date-time
+              example: "2022-05-16T18:03:51+05:30"
+            organization_id:
+              type: string
+              example: "62914174"
+            is_default:
+              type: boolean
+              example: false
+            description:
+              type: string
+              example: "Role for Marketing members"
+            is_custom_admin:
+              type: boolean
+              example: true
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Organisation.CREATE: Add Roles in an Organization
+            ZohoCliq.Organisation.UPDATE: Update Roles in an Organization
+            ZohoCliq.Organisation.DELETE: Delete Roles in an Organization
+            ZohoCliq.Organisation.READ: Read Roles in an Organization

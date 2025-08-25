@@ -190,7 +190,7 @@ export default function SignupPage() {
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               error={errors.email}
-              placeholder="john.doe@ting.in"
+              placeholder="user@ting.in"
               startIcon={<EnvelopeIcon className="h-5 w-5" />}
               fullWidth
               required

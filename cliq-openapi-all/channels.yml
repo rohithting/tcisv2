@@ -1,0 +1,1134 @@
+openapi: 3.0.0
+info:
+  title: Channels
+  description: 'Streamline your communication through channels to collaborate across teams and get work done efficiently. Create channels for team discussions and organization-wide announcements and collaborate with clients and customers through external channels.<br><br>The Channels API allows you to create new channels, retrieve detailed information about specific channels, and fetch a list of channels the current user is a member of. It also enables you to manage channel participants by adding or removing members as needed.<br><br>Additionally, the API supports actions such as approving or rejecting newly created organization-level channels, leaving a channel, and archiving or unarchiving channels to manage their visibility and activity status.'
+  contact: {}
+  version: 1.0.0
+servers:
+  -
+    url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+tags:
+  -
+    name: channels
+    description: 'Channels Module'
+paths:
+  '/channels':
+    post:
+      summary: Create a channel
+      description: 'Use this API to create a new channel in Cliq.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/channel-body-parameters'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelResponse'
+      deprecated: false
+      security:
+        - 
+          Zoho_Auth:
+            - ZohoCliq.Channels.CREATE
+    get:
+      summary: List all channels
+      description: 'Retrieve a list of channels based on the given filters.<br><br><b>Threshold limit</b> : 30 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Name of the channel to be retrieved.
+
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [created, pending, archived]
+          description: |
+            Status of the channel to be retrieved.
+            <ul>
+              <li><b>created</b>: Channels that are active and fully created.</li>
+              <li><b>pending</b>: Channels that are in the process of being created or awaiting confirmation.</li>
+              <li><b>archived</b>: Channels that are no longer active and have been archived.</li>
+            </ul>
+
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+          description: The number of channels that has to be retrieved. Maximum limit will be 100.
+
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [organization, team, private, external]
+          description: |
+            Specifies the level to fetch channels of a particular type.
+            <ul>
+              <li><b>organization</b>: Public channel visible to everyone in the organization.</li>
+              <li><b>team</b>: Channel visible only to specific team(s).</li>
+              <li><b>private</b>: Invitation-only channel with restricted access.</li>
+              <li><b>external</b>: Channel with participants outside the organization.</li>
+            </ul>
+
+        - name: modified_before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Gets the list of channels where the last message is sent before the mentioned time.
+
+        - name: modified_after
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Gets the list of channels where the last message is sent after the mentioned time.
+
+        - name: created_before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: The list of channels created before the specified time.
+
+        - name: created_after
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: The list of channels created after the specified time.
+
+        - name: channel_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The list of channel IDs for which details have to be retrieved. You can enter multiple fields separated by commas.
+
+        - name: chat_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Unique channel chat IDs for which details have to be retrieved. You can enter multiple fields separated by commas.
+
+        - name: team_ids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Gets the list of channels associated with the specified team IDs. You can enter multiple fields separated by commas.
+
+        - name: created_by
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Gets the list of channels created by the mentioned email ID or user ID.
+
+        - name: order_by
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [+last_modified_time, -last_modified_time, +creation_time, -creation_time]
+          description: |
+            To sort the list of available channels in either ascending or descending order.
+            <ul>
+              <li><b>+last_modified_time</b>: Sort channels by last modified time in ascending order.</li>
+              <li><b>-last_modified_time</b>: Sort channels by last modified time in descending order.</li>
+              <li><b>+creation_time</b>: Sort channels by creation time in ascending order.</li>
+              <li><b>-creation_time</b>: Sort channels by creation time in descending order.</li>
+            </ul>
+
+        - name: next_token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Use this parameter to fetch the next immediate list of channels.
+
+        - name: sync_token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Gets the list of recently updated channels after which the previous request was made.  
+            <br><b>Note:</b> The sync_token will return an exception if the number of channels to be synced is greater than 50.
+
+        - name: pinned
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: |
+            When <b>pinned = true</b>, only pinned channels are retrieved.  
+            When <b>pinned = false</b>, all channels are retrieved regardless of pin status.
+
+        - name: joined
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: |
+            When <b>joined = true</b>, only the joined channels are fetched.  
+            When <b>joined = false</b>, only the non-joined channels are fetched.  
+            When not specified, all types of channels will be returned.
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      channels:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/get-all-channels-response'
+                      has_more:
+                        type: boolean
+                        example: true
+                      next_token:
+                        type: string
+                        description: Token to fetch the next set of channels.
+                        example: 2fd152c0c1b5ee5b2a1d5fd1d3b233421cd1b8f67b2038cac5c27264b7ee1c616221ab489ea0bc2d7c43fa7a14f9c851cb11f4693804e0b43019786cc6580824
+                      sync_token:
+                        type: string
+                        description: Token to sync changes from this response onward.
+                        example: 2fd152c0c1b5ee5b2a1d5fd1d3b233422031afe47d55506a59fb92d55ea3a5ca9298862a157ff52c12ce6fb8be2c59b88d86d22368d8b17a1c484589b6c50225   
+      deprecated: false
+      security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.READ     
+  '/channels/{CHANNEL_ID}':
+      get:
+        summary: Retrieve a channel
+        description: 'Use this API to get details of a specific channel.<br><br><b>Threshold limit</b> : 30 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+        parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel for which detailed information needs to be obtained.'
+        responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/ChannelResponse'
+        deprecated: false
+        security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.READ
+      put:
+        summary: Update a channel
+        description: 'Use this API to get details of a specific channel.<br><br>You can also use this API to update the channel permissions.The members having higher level of role can edit the permissions of roles below them only if the member is having the permission to perform the particular action.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+        parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel which needs to modified.'
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+
+                properties:
+                  name:
+                    type: string
+                    description: Renaming an existing channel.
+                    example: Zylker-Customer-Support
+
+                  description:
+                    type: string
+                    description: Updating the existing description of a channel.
+                    example: To post all the support tickets from customers
+
+                  image_data:
+                    type: string
+                    format: byte
+                    description: The base64-encoded image content to be uploaded as display picture for the channel.
+                    example: http://cliq.zoho.com/channel/T4000000040005_4435792_1498572169593/photo.do
+
+                  config:
+                    type: object
+                    description: config is a JSON Object with a key value pair to customize the channel configuration settings.
+                    properties:
+                      reply_mode:
+                        type: string
+                        enum: [normal_reply, threads, both]
+                        description: >
+                          Defines how users can reply to messages in the channel.
+                          <ul>
+                            <li><b>normal_reply</b>: Allows replies directly in the main channel.</li>
+                            <li><b>threads</b>: Restricts replies to threaded conversations.</li>
+                            <li><b>both</b>: Permits both direct replies and threaded replies.</li>
+                          </ul>
+                      leave_join_info:
+                        type: string
+                        enum: [enable, disable]
+                        description: >
+                          To control whether notifications should be posted when users join or leave a channel.
+                          <ul>
+                            <li><b>enable</b>: Posts a notification when a user joins or leaves the channel.</li>
+                            <li><b>disable</b>: Disable notifications for user join/leave events.</li>
+                          </ul>
+                      add_remove_info:
+                        type: string
+                        enum: [enable, disable]
+                        description: >
+                          To manage notifications for adding users to or removing them from the channel.
+                          <ul>
+                            <li><b>enable</b>: Posts notifications when users are added or removed.</li>
+                            <li><b>disable</b>: Restricts notifications for user additions or removals.</li>
+                          </ul>
+                      meeting_chat_type:
+                        type: string
+                        enum: [channel, thread, host_choice]
+                        description: >
+                          Specifies how meeting-related messages are posted in the channel.
+                          <ul>
+                            <li><b>channel</b>: During the meeting, post all messages directly in the channel.</li>
+                            <li><b>thread</b>: During the meeting, post meeting messages in a dedicated thread.</li>
+                            <li><b>host_choice</b>: Allows the meeting host to decide the posting method.</li>
+                          </ul>
+                  admin_permission:
+                       $ref: '#/components/schemas/PermissionSet'
+                  moderator_permission:
+                        $ref: '#/components/schemas/PermissionSet'
+                  member_permission:
+                        $ref: '#/components/schemas/PermissionSet'    
+        responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/ChannelResponse'
+        deprecated: false
+        security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE
+      delete:
+        summary: Delete a channel
+        description: 'Use this API to delete an existing channel.<br><br><b>Threshold limit</b> : 10 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+        parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel which needs to deleted.'
+        responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+        deprecated: false
+        security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.DELETE
+  '/channels/{CHANNEL_ID}/members':
+      get:
+        summary: Get Channel Members
+        description: 'Use this API to get the list of all members in a channel.<br><br><b>Threshold limit</b> : 100 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+        parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel for which members need to be retrieved.'
+        responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      members:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ChannelMember'
+                    example:
+                      members:
+                        - user_id: "1234567"
+                          email_id: "scott.fisher@zylker.com"
+                          name: "Scott Fisher"
+                          user_role: "member"
+                        - user_id: "4355728"
+                          email_id: "olivia.palmer@zylker.com"
+                          name: "Olivia Palmer"
+                          user_role: "member"
+                        - user_id: "5663377"
+                          email_id: "li.jung@zylker.com"
+                          name: "Li Jung"
+                          user_role: "member"
+                        - user_id: "8875836"
+                          email_id: "ryan.west@zylker.com"
+                          name: "Ryan West"
+                          user_role: "super_admin"
+        deprecated: false
+        security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.READ  
+      post:
+        summary: Add Channel Members
+        description: 'Use this API to add members in a channel, by giving their user id or their email ID.<br><br><b>Threshold limit</b> : 100 users per request can be added. 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+        parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel where the members need to be added in bulk.'
+        requestBody:
+          description: Add users to the channel using their user IDs or email addresses.
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_ids:
+                      example:
+                          - "123456"
+                          - "223456"
+                required:
+                  - user_ids
+        responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+        deprecated: false
+        security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE            
+      delete:
+        summary: Delete Channel Members
+        description: 'Use this API to delete groups of members from the channel.<br><br><b>Threshold limit</b> : 100 users per request can be added. 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+        parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel where the members need to be removed in bulk.'
+        requestBody:
+          description: Remove users from the channel using their user IDs or email addresses.
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_ids:
+                      example:
+                          - "123456"
+                          - "223456"
+                  silent:
+                    type: boolean
+                    description: |
+                        If <b>true</b>, the users will be removed silently without sending any notification to the channel or the removed users.<br>
+                        Default value is <b>false</b> if not specified.
+                required:
+                  - user_ids            
+        responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+        deprecated: false
+        security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE        
+  '/bots/{BOT_UNIQUE_NAME}/associate':
+      post:                     
+        summary: Add a Bot to a Channel
+        description: 'Use this API to add a bot to a channel by providing its unique name.<br><br><b>Threshold limit</b> : 5 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+        parameters:
+        - name: BOT_UNIQUE_NAME
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The unique identifier of the bot which needs to be added in the channel.'
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channel_unique_name:
+                    type: string
+                    description: The ID of the channel in which the bot need to be added.
+                    example: 'zylkersupport'
+                required:
+                  - channel_unique_name
+        responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+        deprecated: false
+        security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE 
+  '/channels/{CHANNEL_ID}/members/{USER_ID}/members':
+    put:
+      summary: Update a Channel member's role
+      description: 'Use this API to add a bot to a channel by providing its unique name.<br><br><b>Threshold limit</b> : 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel where the role of the channel member needs to be updated.'
+        - name: USER_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the user whose role needs to be updated.' 
+      requestBody:
+        description: Update the role of a channel member.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  description: |
+                    Role to assign to the channel member. Allowed values:
+                    <ul>
+                      <li><b>super_admin</b>: Has complete control over the channel including all admin privileges.</li>
+                      <li><b>admin</b>: Can manage participants, settings, and content within the channel.</li>
+                      <li><b>moderator</b>: Can moderate conversations and manage basic participant interactions.</li>
+                      <li><b>member</b>: A regular participant with access to send and receive messages.</li>
+                    </ul>
+                    <br><b>Tip:</b> Refer to our <a href="https://www.zoho.com/cliq/help/channels/roles-in-channels.html" target="_blank">help guide on channel roles</a> for more information.
+                  enum: [super_admin, admin, moderator, member]
+              required:
+                - role
+            example:
+              role: moderator
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      deprecated: false
+      security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE 
+  '/channels/{CHANNEL_ID}/approve':
+    post:
+      summary: Approve a Channel
+      description: 'Organization admins can use this API to approve a newly created organization level channel.<br><br><b>Threshold limit</b> : 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel which needs to be approved by admins.'
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      deprecated: false
+      security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE     
+  '/channels/{CHANNEL_ID}/reject':
+    post:
+      summary: Reject a Channel
+      description: 'Organization admins can use this API to reject a newly created organization level channel.<br><br><b>Threshold limit</b> : 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel which needs to be rejected.'
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      deprecated: false
+      security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE               
+  '/channels/{CHANNEL_ID}/join':
+    post: 
+      summary: Join a Channel
+      description: 'Use this API to join a channel.<br><br><b>Threshold limit</b> : 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel that the authenticated user wants to join.'
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/ChannelResponse'
+      deprecated: false
+      security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE   
+  '/channels/{CHANNEL_ID}/leave':
+    post: 
+      summary: Leave a Channel
+      description: 'Use this API to leave a channel.<br><br><b>Threshold limit</b> : 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel that the authenticated user wants to leave.'
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      deprecated: false
+      security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE
+  '/channels/{CHANNEL_ID}/archive':
+    post: 
+      summary: Archive a Channel
+      description: 'Use this API to archive a channel.<br><br><b>Threshold limit</b> : 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel which needs to be archived.'
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      deprecated: false
+      security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE  
+  '/channels/{CHANNEL_ID}/unarchive':
+    post: 
+      summary: Unarchive a Channel
+      description: 'Use this API to unarchive a channel.<br><br><b>Threshold limit</b> : 10 requests can be made per minute.<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHANNEL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the channel which needs to be unarchived.'
+      responses:
+            '200':
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/no-response'
+      deprecated: false
+      security:
+            - 
+              Zoho_Auth:
+                - ZohoCliq.Channels.UPDATE                         
+
+components:
+  schemas:
+    no-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "204 No response"
+    channel-body-parameters:
+      type: object
+      required:
+        - name
+        - level
+
+      properties:
+        name:
+          type: string
+          description: |
+            Name of your choice for the channel.<br>
+            <b>Maximum Length</b>: 50
+          example: Zylker-Support
+
+        description:
+          type: string
+          description: |
+            Short description regarding the channel.
+            <b>Maximum Length</b>: 10500
+          example: To post all the support tickets from customers
+
+        level:
+          type: string
+          enum: [organization, team, private, external]
+          description: |
+            Assigning an access level to the channel.<br>
+            <b>Allowed Values</b>
+            <ul>
+              <li><b>organization</b>: Visible and accessible to all members within the organization.</li>
+              <li><b>team</b>: Restricted to members of a specific team or department.</li>
+              <li><b>private</b>: Invite-only channel visible only to its participants.</li>
+              <li><b>external</b>: Includes users outside the organization (guests or external collaborators).</li>
+            </ul>
+          example: team 
+
+        invite_only:
+          type: boolean
+          default: false
+          description: >
+            If invite_only=true, users will be able to join only when invited.
+            This param is applicable only for organization and Team level channels.
+
+        team_ids:
+          type: array
+          items:
+            type: string
+          description: The organization id to be associated with the team channel.
+          example:
+            - "2323334"
+            - "2328533"
+
+        user_ids:
+          type: array
+          items:
+            type: string
+          description: The Zoho user ids of the users to be added as the channel participants.
+          example:
+            - "100100"
+            - "120001"
+            - "100102"
+
+        email_ids:
+          type: array
+          items:
+            type: string
+          description: Email Ids of the users to be added as the channel participants.
+          example:
+            - "scott.fisher@zylker.com"
+            - "ryan.west@zylker.com"
+
+        image_data:
+          type: string
+          format: byte
+          description: The base64-encoded image content to be uploaded as display picture for the channel.
+          example: http://cliq.zoho.com/channel/T4000000040005_4435792_1498572169593/photo.do
+
+        config:
+          type: object
+          description: Custom configurations for the channel behavior.
+          properties:
+            reply_mode:
+              type: string
+              enum: [normal_reply, threads, both]
+              description: |
+                Controls how replies are posted in the channel:
+                <ul>
+                <li><b>normal_reply</b>: Messages can only be posted as normal replies.</li>
+                <li><b>threads</b>: Messages can only be posted as threaded replies.</li>
+                <li><b>both</b>: Messages can be posted either as normal or threaded replies.</li>
+                </ul>
+            leave_join_info:
+              type: string
+              enum: [enable, disable]
+              description: |
+                Controls whether join/leave info is posted in the channel:
+                <ul>
+                <li><b>enable</b>: Join/leave events will be posted in the channel.</li>
+                <li><b>disable</b>: No join/leave info will be posted.</li>
+                </ul>
+            add_remove_info:
+              type: string
+              enum: [enable, disable]
+              description: |
+                Controls whether participant add/remove events are posted:
+                <ul>
+                <li><b>enable</b>: Add/remove events will be posted in the channel.</li>
+                <li><b>disable</b>: These events will not be posted.</li>
+                </ul>
+            meeting_chat_type:
+              type: string
+              enum: [channel, thread, host_choice]
+              description: |
+                Defines where meeting-related messages are posted:
+                <ul>
+                <li><b>channel</b>: Messages will be posted directly in the channel.</li>
+                <li><b>thread</b>: Messages will be posted in a dedicated thread.</li>
+                <li><b>host_choice</b>: Depends on the meeting host’s preference.</li>
+                </ul>
+
+        admin_permission:
+          $ref: '#/components/schemas/PermissionSet'
+        moderator_permission:
+          $ref: '#/components/schemas/PermissionSet'
+        member_permission:
+          $ref: '#/components/schemas/PermissionSet'
+
+    PermissionSet:
+      type: object
+      properties:
+        send_message:
+          type: boolean
+          description: Allow sending messages in the channel.
+        edit_channel_info:
+          type: boolean
+          description: Allow editing channel information.
+        delete_channel:
+          type: boolean
+          description: Allow deletion of the channel.
+        archive_channel:
+          type: boolean
+          description: Allow archiving the channel.
+        clear_all_messages:
+          type: boolean
+          description: Allow clearing all messages in the channel.
+        add_participant:
+          type: boolean
+          description: Allow adding users to the channel.
+        remove_participant:
+          type: boolean
+          description: Allow removing users from the channel.
+        mention_users:
+          type: boolean
+          description: Allow mentioning other users in messages.
+        unarchive_channel:
+          type: boolean
+          description: Allow unarchiving the channel.
+        leave_channel:
+          type: boolean
+          description: Allow leaving the channel.
+        special_mentions:
+          type: boolean
+          description: Allow using special mentions like @all and @online.
+        edit_my_msg:
+          type: boolean
+          description: Allow editing their own messages.
+        delete_my_msg:
+          type: boolean
+          description: Allow deleting their own messages.
+        video_conference:
+          type: boolean
+          description: Allow starting a video conference in the channel.
+        sticky_message:
+          type: boolean
+          description: Allow setting sticky messages in the channel.
+        audio_conference:
+          type: boolean
+          description: Allow starting an audio conference in the channel.
+        post_reply:
+          type: boolean
+          description: Allow posting replies in the channel.
+        delete_others_message:
+          type: boolean
+          description: Allow deleting messages posted by other users.
+        prime_time:
+          type: boolean
+          description: Allow scheduling prime-time announcements.
+        close_thread:
+          type: boolean
+          description: Allow closing message threads in the channel.
+    ChannelResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "#Zylker-Support"
+          description: Display name of the channel.
+        chat_id:
+          type: string
+          example: "CT_1184653329648523663_62439860"
+          description: Unique identifier for the chat instance of the channel.
+        description:
+          type: string
+          example: "To post all the support tickets from customers"
+        image_url:
+          type: string
+          format: uri
+          example: "http://cliq.zoho.com/channel/T4000000040005_4435792_1498572169593/photo.do"
+        level:
+          type: string
+          enum: [organization, team, private, external]
+        invite_only:
+          type: boolean
+        status:
+          type: string
+          example: "created"
+        channel_id:
+          type: string
+          example: "T4000000040005"
+        organization_id:
+          type: string
+          example: "4435792"
+        creator_id:
+          type: string
+          example: "4435866"
+        creator_name:
+          type: string
+          example: "PatriciaJames"
+        creation_time:
+          type: string
+          format: date-time
+          example: "2017-07-03T14:59:20+05:30"
+        last_modified_time:
+          type: string
+          format: date-time
+          example: "2017-07-03T15:59:20+05:30"
+        current_user_role:
+          type: string
+          example: "super_admin"
+        participant_count:
+          type: integer
+          example: 1
+        admin_permission:
+          $ref: '#/components/schemas/PermissionSet'
+        moderator_permission:
+          $ref: '#/components/schemas/PermissionSet'
+        member_permission:
+          $ref: '#/components/schemas/PermissionSet'
+        unique_name:
+          type: string
+          example: "zylkersupport"
+        teams:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            "4435961": "SALES"
+            "4453461": "MARKETING"
+        joined:
+          type: boolean
+        pinned:
+          type: boolean
+        total_message_count:
+          type: string
+          example: "100"
+        unread_message_count:
+          type: integer
+          example: 5
+        unread_time:
+          type: string
+          format: date-time
+          example: "2017-07-03T15:59:20+05:30"
+    get-all-channels-response:
+      type: object
+      properties:
+        pinned:
+          type: boolean
+        level:
+          type: string
+          enum: [organization, team, personal]
+        chat_id:
+          type: string
+        joined:
+          type: boolean
+        creator_name:
+          type: string
+        unique_name:
+          type: string
+        total_message_count:
+          type: string
+        organization_id:
+          type: string
+        admin_permission:
+          $ref: '#/components/schemas/PermissionSet'
+        moderator_permission:
+          $ref: '#/components/schemas/PermissionSet'
+        member_permission:
+          $ref: '#/components/schemas/PermissionSet'
+        muted_interval:
+          type: string
+          format: date-time
+        channel_id:
+          type: string
+        creator_id:
+          type: string
+        invite_only:
+          type: boolean
+        unread_time:
+          type: string
+          format: date-time
+        unread_message_count:
+          type: integer
+        last_message_info:
+          $ref: '#/components/schemas/LastMessageInfo'
+        last_modified_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+        description:
+          type: string
+        creation_time:
+          type: string
+          format: date-time
+        participant_count:
+          type: integer
+        current_user_role:
+          type: string
+        teams:
+          type: object
+          additionalProperties: true
+        name:
+          type: string
+
+    Permission:
+      type: object
+      additionalProperties:
+        type: boolean
+      description: Permission map for roles like admin, moderator, and member.
+
+    LastMessageInfo:
+      type: object
+      properties:
+        sender_id:
+          type: string
+        message_type:
+          type: string
+        time:
+          type: string
+          format: date-time
+        text:
+          type: string
+        sender_name:
+          type: string
+
+    ChannelMember:
+      type: object
+      properties:
+        user_id:
+          type: string
+          description: Unique ID of the user
+        email_id:
+          type: string
+          format: email
+        name:
+          type: string
+        user_role:
+          type: string
+          enum: [member, admin, super_admin]
+      required:
+        - user_id
+        - email_id
+        - name
+        - user_role
+    add-channel-members-response:
+      type: object
+      properties:
+        success:
+          type: boolean
+        added_users:
+          type: array
+          items:
+            type: string
+          description: The list of user IDs or emails that were successfully added.
+      required:
+        - success
+        - added_users
+
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+           ZohoCliq.Channels.CREATE: 'Create Channels'
+           ZohoCliq.Channels.READ: 'Read Channels'
+           ZohoCliq.Channels.UPDATE: 'Update Channels'
+           ZohoCliq.Channels.DELETE: 'Delete Channels'
+
+
+
+
+          
+
+      
+
+          
+
+          
+
+        
+

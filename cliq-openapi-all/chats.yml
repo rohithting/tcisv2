@@ -1,0 +1,490 @@
+openapi: 3.0.0
+info:
+  title: Chats
+  description: 'The Chats API enables effective management of conversations. It offers complete control over chat interactions, making it suitable for a range of messaging and collaboration scenarios. With these APIs, you can retrieve all chats, manage chat members, pin and unpin messages, mute and unmute conversations, and handle one-on-one, group chats and channels, etc.'
+  contact: {}
+  version: 1.0.0
+servers:
+  -
+    url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+tags:
+  -
+    name: chats
+    description: 'Chats Module'
+paths:
+  '/chats':
+    get:
+      summary: Retrieve all direct chats
+      description: 'Use this API to get details of all direct chats.<br><br><b>Threshold limit</b> : 30 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: 'The number of chats that has to be retrieved.<br>Maximum limit : 100.'
+        - name: modified_before
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Gets the list of chats where the last message is sent before the mentioned time.'
+        - name: modified_after
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 'Gets the list of chats where the last message is sent after the mentioned time.'
+        - name: drafts
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: 'If drafts is set to true, it retrieves the list of chats that contain drafts.'
+      responses:
+        '200':
+          description: A list of chats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chats:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/get-chats-response'
+      security:
+        - 
+          Zoho_Auth:
+            - ZohoCliq.Chats.READ
+  '/chats/{CHAT_ID}/members':
+    get:
+      summary: Retrieve the members of a chat
+      description: 'Use this API to get details of members of a chat.<br><br><b>Threshold limit</b> : 30 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat from which members need to be retrieved.'
+        - name: fields
+          in: query
+          required: false
+          schema: 
+            type: string
+          description: 'Use this parameter to get details of members who are participating in a conversation.<br>Allowed values: <b>name | email_id | user_id</b>'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/retrieve-chat-members'
+      deprecated: false
+      security:
+        - 
+          Zoho_Auth:
+            - ZohoCliq.Chats.READ          
+  '/chats/{CHAT_ID}/mute':
+    post:
+      summary: Mute a chat
+      description: 'Use this API to mute a chat conversation.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat which needs to muted.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Chats.UPDATE
+  '/chats/{CHAT_ID}/unmute':
+    post:
+      summary: Unmute a chat
+      description: 'Use this API to unmute a chat conversation.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat which needs to unmuted.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Chats.UPDATE        
+  '/chats/{CHAT_ID}/stickymessage':
+    post:
+      summary: Pin a message
+      description: 'Use this API to pin a message within a conversation.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat where the message should be pinned.'
+      
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/pin-a-message-request'    
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pin-a-message-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Chats.CREATE
+    get:        
+      summary: Retrieve a pinned message
+      description: 'Use this API to retrieve a pinned message within a conversation.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat where the pinned message needs to be retrieved.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-pinnedmessage-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Chats.READ
+    delete:
+      summary: Unpin a message
+      description: 'Use this API to unpin a message in a conversation.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat where the pinned message needs to be unpinned.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Chats.DELETE          
+  '/chats/{CHAT_ID}/leave':
+    post:
+      summary: Leave a group chat
+      description: 'Use this API to exit a group chat.<br><br><b>Threshold limit</b> : 10 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the group chat that you wish to exit.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Chats.UPDATE             
+components:
+  schemas:
+    post-message-in-a-channel-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "204 No response"
+    get-chats-response:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Ryan West"
+        creation_time:
+          type: string
+          format: date-time
+          example: "2019-10-15T03:37:28-07:00"
+        creator_id:
+          type: string
+          example: "631830848"
+        last_modified_time:
+          type: string
+          format: date-time
+          example: "2019-10-15T03:37:28-07:00"
+        removed:
+          type: boolean
+          example: false
+        recipients_summary:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserSummary'
+        chat_type:
+          type: string
+          enum: [chat, dm]
+          example: "dm"
+        chat_id:
+          type: string
+          example: "2230748224630350194"
+        last_message_info:
+          $ref: '#/components/schemas/LastMessageInfo'
+        pinned:
+          type: boolean
+          example: false
+        participant_count:
+          type: integer
+          example: 2
+
+    UserSummary:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: "631830848"
+        name:
+          type: string
+          example: "Ryan West"
+
+    LastMessageInfo:
+      type: object
+      properties:
+        sender_id:
+          type: string
+          example: "631830849"
+        message_type:
+          type: string
+          example: "text"
+        styles:
+          $ref: '#/components/schemas/MessageStyles'
+        time:
+          type: string
+          format: date-time
+          example: "2019-09-12T00:35:18-07:00"
+        text:
+          type: string
+          example: "https://cliq.zoho.com/channels/marketing"
+        bot:
+          $ref: '#/components/schemas/BotInfo'
+        sender_name:
+          type: string
+          example: "Scott Fisher"
+
+    MessageStyles:
+      type: object
+      properties:
+        highlight:
+          type: boolean
+          example: true
+
+    BotInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Zia"
+        image_url:
+          type: string
+          format: uri
+          example: "https://img.zohostatic.com/chat/default/officechat/images/default/event-bot.png"
+
+    retrieve-chat-members:
+      type: object
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/Members'
+
+    Members:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: "431930546"
+        email_id:
+          type: string
+          format: email
+          example: "olivia.palmer@zylcal.com"
+        name:
+          type: string
+          example: "Olivia - Content Writer"  
+
+    pin-a-message-request:
+      type: object
+      required:
+        - id
+      properties:
+
+        id:
+          type: string
+          description: 'Indicates the message ID (msguid) of the message that should be pinned.'
+          example: "1573708648341_375412769224"
+
+        expiry_time:
+          type: integer
+          format: int64
+          description: 'To set the expiry time for the message to be pinned (in milliseconds).'  
+          example: 1748946453794
+
+        notify:
+          type: boolean
+          description: 'To determine whether the pinned message should notify all participants.'  
+          example: false
+
+
+    pin-a-message-response:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            expiry_time:
+              type: integer
+              example: -1
+            creator:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Scott Fisher"
+                id:
+                  type: string
+                  example: "690440148"
+            message:
+              type: object
+              properties:
+                msg:
+                  type: string
+                  example: "meeting at 4"
+                sender:
+                  type: string
+                  example: "690440148"
+                lmsgtime:
+                  type: string
+                  example: "1573708493055"
+                msguid:
+                  type: string
+                  example: "1573708648341%20375412769224"
+                time:
+                  type: string
+                  example: "1573708648341"
+                dname:
+                  type: string
+                  example: "Scott Fisher"
+            created_time:
+              type: integer
+              example: 1573708712431
+            last_modified_time:
+              type: integer
+              example: 1573708712431
+            chat_id:
+              type: string
+              example: "CT_2243173626687865223_P87610291-C4"
+    get-pinnedmessage-response:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "stickymessage"
+        data:
+          type: object
+          properties:
+            expiry_time:
+              type: integer
+              example: -1
+            creator:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Scott Fisher"
+                id:
+                  type: string
+                  example: "692133012"
+            message:
+              type: object
+              properties:
+                msg:
+                  type: string
+                  example: "Feature review date: 15/11/2019"
+                sender:
+                  type: string
+                  example: "690440148"
+                lmsgtime:
+                  type: string
+                  example: "1573641920572"
+                msguid:
+                  type: string
+                  example: "1573641936588%20345281288778"
+                time:
+                  type: string
+                  example: "1573641936588"
+                dname:
+                  type: string
+                  example: "Ryan West"
+            created_time:
+              type: integer
+              example: 1573641961788
+            last_modified_time:
+              type: integer
+              example: 1573641961788
+            chat_id:
+              type: string
+              example: "CT_2243173626687865223_P87610291-C4"
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Chats.READ: 'Read Chats'
+            ZohoCliq.Chats.UPDATE: 'Modify Chats'
+            ZohoCliq.Chats.DELETE: 'Delete Chats'
+
+
+
+

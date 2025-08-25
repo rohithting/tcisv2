@@ -1,0 +1,144 @@
+openapi: 3.0.0
+info:
+  title: Custom Email
+  description: >
+    Configure a custom email address (customid@yourdomain.com) for notification emails sent from Cliq to your organisation users. Your custom email id will replace the systemgenerated@mailer.zohocliq.com email id of Cliq.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: customemail
+    description: 'Custom Email Module'
+
+paths:
+
+  /mailconfigurations/global:
+    get:
+      summary: Retrieve global mail configuration
+      description: >
+        Use this API to retrieve a global mail configuration.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomDomainVerificationResponse'
+      security:
+        - Zoho_Auth:
+            -  ZohoCliq.Organisation.READ    
+
+    put:
+      summary: Update mail configuration
+      description: >
+        Use this API to update a mail configuration.
+        <br><br>
+        <b>Threshold limit</b>: 20 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmailRequestBody'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomDomainVerificationResponse'
+      security:
+        - Zoho_Auth:
+            -  ZohoCliq.Organisation.READ  
+
+
+components:
+  schemas:
+
+    no-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "204 No response"
+
+    CustomDomainVerificationResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            email_id:
+              type: string
+              description: Denotes the email address.
+              example: "scott.fisher@zylkerorg.gq"
+            name:
+              type: string
+              description: Denotes the name of the custom emailer.
+              example: "Scott"
+            dkim_value:
+              type: string
+              description: String of characters representing the public key along with its corresponding private key during the DKIM setup process.
+              example: "k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCr6KMgdxxgg7oT3ulMwPJs9RXgXDrI9UWU118pHEMohl3UbL3Jwp4oxp/9N3thh/3WCJnYV134zbEVolZwqaT3JsFEq/mQ/RpW/JnOZ3rnxqJPurb2bcfJol4SDxiWVObzHX31xnANzFcXnq1/5dMK5QvW4Jh7n0fm4+4ywqiy2QIDAQAB"
+            dkim_status:
+              type: string
+              description: Denotes if the status of the dkim is verified or not.
+              enum: [verified, not_verified]
+              example: "not_verified"
+            dkim_host:
+              type: string
+              description: Denotes the dkim host name, which will be added in the DNS records.
+              example: "1522905413783._domainkey.zylkerorg.gq"
+            cname_status:
+              type: string
+              description: Denotes the status of the canonical name record used to alias a domain name with another domain name.
+              enum: [verified, not_verified]
+              example: "verified"
+
+    UpdateEmailRequestBody:
+      type: object
+      required:
+        - name
+        - email_id
+        - cname_status
+      properties:
+        name:
+          type: string
+          description: Name of the emailer to be updated.
+          example: "Scott"
+        email_id:
+          type: string
+          description: The email address to be updated.
+          example: "scott.fisher@zylkerorg.gq"
+        cname_status:
+          type: string
+          description: The cname status to be updated.
+          example: "verified"
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Profile.UPDATE: Update Profile
+            ZohoCliq.Profile.READ: Read Profile

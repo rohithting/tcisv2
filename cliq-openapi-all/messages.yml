@@ -1,0 +1,820 @@
+openapi: 3.0.0
+info:
+  title: Messages
+  description: 'The messaging API can be used to post message to a channel, user or a bot.The message structure can either be as simple as a text or customized as cards to serve different purposes.'
+  contact: {}
+  version: 1.0.0
+servers:
+  -
+    url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+tags:
+  -
+    name: messages
+    description: 'Messages Module'
+paths:
+  '/chats/{CHAT_ID}/messages':
+    get:
+      summary: Get Messages
+      description: 'Retrieves messages from a chat conversation that the user has access to.<br><br><b>Threshold limit</b> : 15 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>'
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat from which messages are retrieved.'
+        - name: fromtime
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: 'Time from when you want to retrieve messages from the chat. From time should be passed in milliseconds.'
+        - name: totime
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: 'Time till when you want to retrieve messages from the chat. To time should be passed in milliseconds.'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+          description: 'The number of messages to be retrieved. If limit is not specified, maximum of 100 messages will be retrieved.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-messages-response'
+      deprecated: false
+      security:
+        - 
+          Zoho_Auth:
+            - ZohoCliq.Messages.READ
+  '/chats/{CHAT_ID}/messages/{MESSAGE_ID}/messages':
+    get:
+      summary: Retrieve a message
+      description: "Use this API to retrieve a message from a chat conversation that you have access to. Get the message's unique ID by calling the get messages API.<br><br><b>Threshold limit</b> : 30 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat from which messages are retrieved.'
+        - name: MESSAGE_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the message to be retrieved.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/message_data'
+      deprecated: false
+      security:
+        - 
+          Zoho_Auth:
+            - ZohoCliq.Messages.READ
+  '/channelsbyname/{CHANNEL_UNIQUE_NAME}/message':
+    post:
+      summary: Post message in a channel
+      description: "You can post a message in a channel using its unique name. The message can be simple text or a message card with buttons. To find the channel's unique name, select the <b>View Information</b> option in the channel preview and then click on <b>Connectors</b>. The API endpoint will display the channel's unique name.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        -
+          name: CHANNEL_UNIQUE_NAME
+          in: path
+          description: "Unique name of the channel."
+          required: true
+          schema: 
+            type: string
+            example: "zylkermarketing"
+        -
+          name: bot_unique_name
+          in: query
+          description: "Use this parameter to send a message in a channel as a bot. Note that the bot should already be a participant in the channel."
+          required: false
+          schema: 
+            type: string
+        -
+          name: mark_as_read
+          in: query
+          description: "Use these APIs to mark the sent message as read for the user. By default, the message will be unread for the message posted by the user."
+          required: false
+          schema: 
+            type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/post-message-in-a-channel-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE  
+  '/bots/{BOT_UNIQUE_NAME}/message': 
+    post: 
+      summary: Post message to a bot
+      description: "You can send a message to a bot using its unique name. The message can be a simple text or a message card with buttons. You can obtain the bot's unique name from its API endpoint URL. To find the API endpoint URL and bot's unique name, go to Bots & Tools → Bots → Click on the bot of your choice → Copy the API endpoint URL and the bot unique name from the URL.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        -
+          name: BOT_UNIQUE_NAME
+          in: path
+          description: "Use this parameter to send a message in a channel as a bot. Note that the bot should already be a participant in the channel."
+          required: true
+          schema: 
+            type: string
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/post-message-to-a-bot-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-to-a-bot-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+  '/chats/{CHAT_ID}/message':
+    post: 
+      summary: Post message in chat
+      description: "To post message in a chat (or thread), the chat_id (thread_id in case of threads) can be used in the request URL.<br><br>The message can be a simple text as well as a message card with buttons. Take a look at our message cards.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat where the message should be posted.'
+    
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/post-message-in-chat-request'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-chat-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+  '/buddies/{EMAIL_ID}/message':
+    post: 
+      summary: Post message to a user
+      description: "Post a message to a user by giving the email ID in the request URL, followed by the message object containing plain text or message card.<br><br>The zuid of the user can also be given instead of the email ID.<br><br>Note: This API will be not applicable if the intended user is neither a mutual contact nor your organization member.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>"
+      
+      parameters:
+        - name: EMAIL_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'Use this parameter to send a message to a user in Cliq.'
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/post-message-in-chat-request'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-chat-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Webhooks.CREATE
+
+  '/chats/{CHAT_ID}/messages/{MESSAGE_ID}':
+    put:
+      summary: Edit a message
+      description: "Use this API to edit a message in a conversation. Get the message's unique ID by using the get messages API.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>"
+
+      parameters:
+
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat where the message should be edited.'
+
+        - name: MESSAGE_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the message which needs to be edited.'  
+
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/edit-a-message-request'
+              
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Webhooks.UPDATE 
+
+    delete:
+      summary: Delete a message
+      description: "Use this API to delete a message in a conversation. Get the message's unique ID by using the get messages API.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: MESSAGE_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the message which needs to be deleted.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.Webhooks.DELETE  
+  '/chats/{CHAT_ID}/messages/{MESSAGE_ID}/reactions':
+    get:
+      summary: Get Reactions
+      description: "Use this API to retrieve details for all reactions to a specific message.<br><br><b>Threshold limit</b> : 50 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 10 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat containing the message.'
+        - name: MESSAGE_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the message for which reactions are to be fetched.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/get-reactions'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.messageactions.READ
+    post:
+      summary: Add a reaction
+      description: "Use this API to add a react to a message sent in a chat. Get the message's unique ID by using the get messages API.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat containing the message.'
+        - name: MESSAGE_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the message for which reaction need to be added.'
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-a-reaction-request'    
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.messageactions.CREATE
+
+    delete:
+      summary: Delete a reaction
+      description: "Use this API to delete the reaction to a message.<br><br><b>Threshold limit</b> : 20 requests per min per user<br>Number of API calls allowed within a minute.<br><br><b>Lock period</b>: 5 minutes<br>Wait time before consecutive API requests.<br>"
+      parameters:
+        - name: CHAT_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the chat containing the message.'
+        - name: MESSAGE_ID
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'The ID of the message for which reaction need to be added.'
+        - name: emoji_code
+          in: query
+          schema:
+            type: string
+          description: 'Use this parameter to add a reaction to a message sent in a chat.<br>Allowed values: Zomojis | Unicode smiley.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/add-a-reaction-request'    
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/post-message-in-a-channel-response'
+      deprecated: false
+      security:
+        -
+          Zoho_Auth:
+            - ZohoCliq.messageactions.CREATE        
+components:
+  schemas:
+    MessageRequest:
+      type: object
+      required:
+        - user_ids
+        - message_details
+      properties:
+        user_ids:
+          type: array
+          description: 'List of user IDs to send the message to'
+          items:
+            type: string
+          example: ['55743307', '55622727']
+        message_details:
+          type: object
+          description: 'Message details for each user'
+          additionalProperties:
+            type: object
+            required:
+              - chat_id
+              - message_id
+            properties:
+              chat_id:
+                type: string
+                description: 'Chat identifier'
+                example: 'CT_1203304812000146098_55622663-B2'
+              message_id:
+                type: string
+                description: 'Unique message identifier'
+                example: '1709038327622%2029706114886'
+    UserMessage:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: string
+          example: ['55743307', '55622727']
+        message_details:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              chat_id:
+                type: string
+                description: 'Chat identifier'
+                example: 'CT_1203304812000146098_55622663-B2'
+              message_id:
+                type: string
+                description: 'Unique message identifier'
+                example: '1709038327622%2029706114886'
+    MessageComponents:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 'Message ID'
+          example: '1542711601585_349430767610289'
+        fileMessage_id:
+          type: string
+          description: 'Message ID of a file message'
+          example: '1543384891842_351840917549285'
+        time:
+          type: integer
+          description: 'Timestamp of the sent message'
+          example: 1542798001273
+        type:
+          type: string
+          description: 'Type of the message'
+          example: 'text'
+    file_type:  
+       description: 'The format of an attachment message'
+       type: string
+       example: 'file'    
+    senderName:
+      description: 'Name of the message sender'  
+      type: string
+      example: 'Scott Fisher'
+    senderID:
+      description: 'User ID of the message sender'
+      type: string
+      example: '1542798001273'
+    sender:
+      type: object
+      properties:
+        senderName:
+          $ref: '#/components/schemas/senderName'
+        senderID:
+          $ref: '#/components/schemas/senderID'  
+    messageText:
+      description: 'Text message sent to the user'
+      type: string
+      example: 'Hi! What time is the review meeting today?'
+    content:
+      type: object
+      properties:
+        messageText:
+          $ref: '#/components/schemas/messageText'
+    fileName:
+       type: string
+       example: 'Feature-overview.jpg'
+    contentType:
+        type: string
+        example: 'image/jpeg'
+    imageHeight:
+        type: integer
+        example: 3510
+    imageSize:
+        type: integer
+        example: 559008
+    imageWidth:
+        type: integer
+        example: 2552
+    dimensions:
+      type: object
+      properties:
+        height:
+          $ref: '#/components/schemas/imageHeight'
+        size:
+          $ref: '#/components/schemas/imageSize'
+        width:
+          $ref: '#/components/schemas/imageWidth'
+    file_id: 
+      type: string
+      example: 'f3791c2279a67f6e5cbc8e1beb41ded85da2bdc672e2496ba9af50c0c24c8e2e453862a8a28becb86f859ab142d44633b05a8fb2ff34955c9e9824527c15cd03'
+    file_content:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/fileName'
+        type:
+          $ref: '#/components/schemas/file_type'
+        dimensions:
+          $ref: '#/components/schemas/dimensions' 
+        id:
+          $ref: '#/components/schemas/file_id'   
+    thumbnailHeight:
+        type: integer
+        example: 230
+    thumbnailWidth:
+        type: integer
+        example: 400
+    blur_data:
+        type: string
+        example: '/9j/4AAQSkZJRgABAgAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY22jK/dwMdD65q/QKACiiigApAQSR6HBpTTcBNxUcscn+X9KAHUU1TvyGAI9KUKqk7Rj6UALigADpSA01VVCxRVUsdzYGMnpk/kKAH0UmaKAP//Z'
+    thumbnail:
+        type: object
+        properties:
+          height:
+            $ref: '#/components/schemas/thumbnailHeight'
+          width:
+            $ref: '#/components/schemas/thumbnailWidth'
+          blur_data:
+            $ref: '#/components/schemas/blur_data'    
+    comment:
+      description: 'Message sent along with the file'
+      type: string
+      example: 'Hey Emily! Hope you understand the above design'
+    fileMessage_content:
+      type: object
+      properties:
+        thumbnail:
+          $ref: '#/components/schemas/thumbnail'
+        file: 
+          $ref: '#/components/schemas/file_content' 
+        comment:
+          $ref: '#/components/schemas/comment'   
+    message_data:
+      type: object
+      properties:
+        sender:
+          $ref: '#/components/schemas/sender'
+        id:
+          type: string
+          description: 'Message ID'
+          example: '1542711601585_349430767610289'
+        time:
+          type: integer
+          description: 'Timestamp of the sent message'
+          example: 1542798001273
+        type:
+          type: string
+          description: 'Message type'
+          example: 'text'
+        content:
+          type: string
+          description: 'Message content'
+          example: 'Hello world'
+    fileMessage_data:
+      type: object
+      properties:
+        sender:
+          type: object
+          properties:
+            name:
+              type: string
+              description: 'Name of the sender'
+              example: 'John Doe'
+            id:
+              type: string
+              description: 'Sender ID'
+              example: '55743307'
+        id:
+          type: string
+          description: 'Message ID'
+          example: '1542711601585_349430767610289'
+        time:
+          type: integer
+          description: 'Timestamp of the sent message'
+          example: 1542798001273
+        type:
+          $ref: '#/components/schemas/file_type'  
+        content:
+          $ref: '#/components/schemas/fileMessage_content'       
+    get-messages-response:
+      type: object
+      properties:
+        data:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/fileMessage_data'
+              - $ref: '#/components/schemas/message_data'
+    post-message-in-a-channel-request:
+        type: object
+        required:
+          - text
+        properties:
+          text:
+            description: "Message text to be sent in the channel.<br><b>Maximum Length</b>: 5000"
+            type: string
+            example: "Hey Guys!"
+            
+          reply_to:
+            description: "Use this parameter to reply to a message shared in a channel. Retrieve the message ID using the get messages API."
+            type: string
+            example: "72374289911"
+          sync_message:
+            description: |
+              Use this parameter to post a message in a synchronous thread. If sync_message = true, the message_id will be returned as the response.
+              <br>Note that the message_id will not be returned if the message is posted as a bot.
+            type: boolean
+            example: true
+  
+    post-message-in-a-channel-response:
+        type: object
+        properties:
+          Response Code: 
+            type: string
+            example: "204 No response"
+    post-message-to-a-bot-request:
+        type: object
+        required:
+          - text
+        properties:
+
+          text:
+            description: "Use this parameter to send a message to a bot.<br><b>Maximum Length</b>: 5000"
+            type: string
+            example: "Hey!"
+
+          userids:
+            type: string
+            description: "Use this parameter to broadcast message to dedicated bot subscribers. You can enter multiple values, each separated with a comma."
+            example: "55743307,55622727"
+
+          sync_message:
+            type: boolean
+            description: "Use this parameter to post a message in a synchronous thread. If sync_message = true, the message_id and chat_id of the users will be returned as the response."
+            example: true
+
+          reply_to:
+            type: string
+            description: "Use this parameter to reply to a message in the bot conversation. Retrieve the message ID using the get messages API."
+            example: "723489201"
+
+
+    post-message-to-a-bot-response:
+        type: object
+        properties:
+          user_ids:
+            type: array
+            items:
+              type: string
+            description: "List of user IDs."
+          message_details:
+            type: object
+            description: "Mapping of user IDs to their chat and message details."
+            additionalProperties:
+              type: object
+              properties:
+                chat_id:
+                  type: string
+                  description: "Unique chat ID associated with the user."
+                message_id:
+                  type: string
+                  description: "Unique message ID within the chat."
+        example:
+          user_ids:
+            - "55743307"
+            - "55622727"
+          message_details:
+            "55622727":
+              chat_id: "CT_1203304812000146098_55622663-B2"
+              message_id: "1709038327622%2029706114886"
+            "55743307":
+              chat_id: "CT_1203304811888980596_55622663-B2"
+              message_id: "1709038327612%20712605914940"
+    post-message-in-chat-request:
+          type: object
+          required:
+            - text
+          properties:
+            text:
+              description: "Use this parameter to send a message in a chat.<br><b>Maximum Length</b>: 5000"
+              type: string
+              example: "Hey!"
+
+            reply_to:
+              type: string
+              description: "Use this parameter to reply to a message in a conversation. Retrieve the message ID using the get messages API."
+              example: "55743307"
+
+            sync_message:
+              type: boolean
+              description: "Use this parameter to post a message in a synchronous thread. If sync_message = true, the message_id will be returned as the response."
+              example: true
+            
+            mark_as_read:
+              type: boolean
+              description: "Use this parameter to mark the sent message as read for the user. By default, the message will be unread for the message posted by the user."
+              example: true
+
+    post-message-in-a-chat-response:
+          type: object
+          properties:
+                message_id: 
+                  type: string
+                  example: "1599387839188_229293271789"
+
+    edit-a-message-request:
+          type: object
+          required:
+            - text
+          properties:
+
+                text: 
+                  type: string
+                  description: 'Use this parameter to edit a message in a channel or a chat.<br><b>Maximum Length</b>: 5000'
+                  example: "Hey! Cliq platform allows you to manage your workday tasks effectively." 
+
+                notify_edit:
+                  type: boolean
+                  example: true
+                  description: 'Use this parameter to notify the participants in a channel or a chat about an edited message.'
+
+
+    get-reactions:
+          type: object
+          properties:
+            data:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+                  pattern: '^\d+:\d+:.+$'
+              example:
+                "😍":
+                  - "1710152648241:802515329:Diana"
+                  - "1710152690025:784333365:Celeste Liane"
+                  - "1710152842875:839672527:Berk Trinity"
+                "🔥":
+                  - "1710152758419:788604182:Elizebet Tater"
+                  - "1710152797740:19924487:Derek"
+                  - "1710161571235:822083117:Mary E"
+                  - "1710165907573:800612880:Dipika"
+                "💪":
+                  - "1710152692044:788608119:Velasco"
+                  - "1710152722572:756417177:Guru"
+                  - "1710152861184:785341087:Sanjna"
+                  - "1710155915492:1248183:Catherine"
+                  - "1710165906976:800612880:Elizebet Tater"
+
+    add-a-reaction-request:
+            type: object
+            properties:
+                emoji_code:
+                  type: string
+                  description: |
+                    Use this parameter to add a reaction to a message sent in a chat.<br>
+                    <b>Allowed values</b>
+                    <uL>
+                      <li><b>Zomojis</b> : Custom emojis supported by Zoho Cliq</li>
+                      <li><b>Unicode smiley</b> :Standard emojis (e.g., 😀, ❤️) passed as actual characters or Unicode.</li>
+                  example: ":smile:"
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Messages.READ: 'Read Messages'
+            ZohoCliq.Messages.UPDATE: 'Update Messages'
+            ZohoCliq.Messages.DELETE: 'Delete Messages'
+            ZohoCliq.Webhooks.CREATE: 'Post messages to your conversations directly or by using incoming webhooks'
+            ZohoCliq.messageactions.READ: 'Access message actions'
+            ZohoCliq.messageactions.CREATE: 'Create message actions'
+            ZohoCliq.messageactions.DELETE: 'Delete message actions'
+
+
+
+
+          
+
+      
+
+          
+
+          
+
+        
+

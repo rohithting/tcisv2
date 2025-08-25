@@ -47,11 +47,19 @@ export default function HomePage() {
           <div className="flex justify-between items-center py-6">
             {/* Logo */}
             <div className="flex items-center">
-              <div className="w-10 h-10 bg-primary-200 rounded-full flex items-center justify-center mr-3">
-                <span className="text-xl font-bold text-black ting-text">t</span>
+              <div className="w-10 h-10 bg-primary-200 rounded-full flex items-center justify-center mr-3 overflow-hidden">
+                {process.env.NEXT_PUBLIC_PLATFORM_LOGO_URL ? (
+                  <img 
+                    src={process.env.NEXT_PUBLIC_PLATFORM_LOGO_URL} 
+                    alt={process.env.NEXT_PUBLIC_PLATFORM_NAME || 'TCIS'} 
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-black ting-text">t</span>
+                )}
               </div>
               <h1 className="text-2xl brand-heading text-gray-900 dark:text-white">
-                <span className="ting-text">ting</span> TCIS
+                <span className="ting-text">ting</span> {process.env.NEXT_PUBLIC_PLATFORM_NAME || 'TCIS'}
               </h1>
             </div>
 

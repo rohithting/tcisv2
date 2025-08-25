@@ -1,0 +1,560 @@
+openapi: 3.0.0
+info:
+  title: Userfields
+  description: >
+    Userfields are a list of attributes (details) that are assigned to a user in Cliq.<br><br>
+    Most of the default userfields can be customized while new custom userfields can also be created to suit specific needs.
+  contact: {}
+  version: 1.0.0
+
+servers:
+  - url: 'https://cliq.zoho.com/api/v2'
+    description: 'API Endpoint'
+
+tags:
+  - name: userfields
+    description: 'Userfields Module'
+
+paths:
+  /userfields:
+    get:
+      summary: Get all userfields
+      description: |
+        Use this API to get the details of all userfields.
+        <br><br>
+        <b>Threshold limit</b>: 10 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserfieldListResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Users.READ
+
+    post:
+      summary: Add a userfield
+      description: |
+        Use this API to create a new custom userfield.<br>
+        <b>Note</b> : You can also encrypt the userfield if it contains sensitive data.
+        <br><br>
+        <b>Threshold limit</b>: 10 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserfieldCreateRequest'
+      
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserfieldCreateResponse'
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.UserFields.CREATE
+
+
+  /userfields/{FIELD_ID}:
+    get:
+      summary: Retrieve a particular userfield
+      description: |
+        Use this API to get the details of a particular userfield.
+        <br><br>
+        <b>Threshold limit</b>: 10 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+      
+      parameters:
+          - name: FIELD_ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the userfield for which detailed information needs to be retrieved.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Retrieve-Userfield'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Users.READ
+
+    put:
+      summary: Update a userfield 
+      description: |
+        use this API to update the details of a particular userfield.<br><br>
+        <b>Note</b>: When updating the drop_down type userfields, the unique ID's of the options should be unique i.e, they should not be repetitive.<br>
+        If multiple options have the same unique ID they will be replaced with one.
+        <br><br>
+        <b>Threshold limit</b>: 10 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+          - name: FIELD_ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the userfield which needs to be updated.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserfieldUpdateRequest'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserfieldUpdateResponse'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Userfields.UPDATE
+
+    delete:
+      summary: Delete a userfield
+      description: |
+        Use this API to delete a particular userfield.
+        <br><br>
+        <b>Threshold limit</b>: 10 requests per min per user<br>
+        Number of API calls allowed within a minute.<br><br>
+
+        <b>Lock period</b>: 10 minutes<br>
+        Wait time before consecutive API requests.
+
+      parameters:
+          - name: FIELD_ID
+            in: path
+            required: true
+            schema:
+              type: string
+            description: Unique identifier of the userfield which needs to be deleted.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/no-response'
+
+      security:
+        - Zoho_Auth:
+            - ZohoCliq.Userfields.DELETE
+
+components:
+  schemas:
+    no-response:
+      type: object
+      properties:
+        Response Code:
+          type: string
+          example: "204 No response"
+
+
+    UserfieldListResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          example: /api/v2/userfields
+        list:
+          type: array
+          items:
+            type: object
+            properties:
+              system_defined:
+                type: boolean
+              is_searchable:
+                type: boolean
+              unique_name:
+                type: string
+              name:
+                type: string
+              id:
+                type: string
+              creation_time:
+                type: string
+                format: date-time
+              last_modified_time:
+                type: string
+                format: date-time
+              mandatory:
+                type: boolean
+              encrypted:
+                type: boolean
+              edit_permission:
+                type: boolean
+              organization_id:
+                type: string
+              enabled:
+                type: boolean
+              type:
+                type: string
+              label:
+                type: string
+              default_value:
+                type: string
+          example:
+            - system_defined: false
+              is_searchable: false
+              unique_name: description
+              name: Description
+              id: "1901318000003077001"
+              creation_time: "2021-04-15T20:34:10-07:00"
+              last_modified_time: "2021-08-03T21:39:06-07:00"
+              mandatory: true
+              encrypted: false
+              edit_permission: false
+              organization_id: "631836344"
+              enabled: true
+              type: text_field
+              label: Description
+              default_value: "-"
+            - system_defined: true
+              is_searchable: true
+              unique_name: extension
+              name: Extension
+              id: "1901318000001264019"
+              creation_time: "2019-02-03T23:08:33-08:00"
+              last_modified_time: "2019-06-13T22:57:30-07:00"
+              mandatory: false
+              edit_permission: false
+              organization_id: "631836344"
+              enabled: true
+              type: text_field
+              label: Extension
+            - system_defined: false
+              is_searchable: false
+              unique_name: dateofjoining
+              name: Date of Joining
+              id: "1901318000001602021"
+              creation_time: "2019-06-13T22:58:00-07:00"
+              last_modified_time: "2021-08-03T21:05:20-07:00"
+              mandatory: false
+              encrypted: false
+              edit_permission: false
+              organization_id: "631836344"
+              enabled: true
+              type: date_picker
+              label: Date of Joining
+              default_value: "-"
+
+    UserfieldCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 30
+          description: Displays the name of the userfield.
+          example: Vaccinated
+        type:
+          type: string
+          description: Type of the userfield (e.g., text_field, drop_down).
+          example: drop_down
+        mandatory:
+          type: boolean
+          description: Used to specify if all users should have that field.
+          example: true
+        encrypted:
+          type: boolean
+          description: Used to specify if the userfield should be encrypted.
+          example: false
+        edit_permission:
+          type: boolean
+          description: Used to specify whether users can edit this field.
+          example: true
+        options:
+          type: array
+          description: Required if `type` is `drop_down`. List of dropdown options.
+          items:
+            type: string
+          example: ["Yes", "No", "Prefer not to say"]
+
+    UserfieldCreateResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          example: /api/v2/userfields
+        data:
+          type: object
+          properties:
+            system_defined:
+              type: boolean
+              example: false
+            is_searchable:
+              type: boolean
+              example: false
+            unique_name:
+              type: string
+              example: vaccinated
+            name:
+              type: string
+              example: Vaccinated
+            id:
+              type: string
+              example: "1901318000003603019"
+            creation_time:
+              type: string
+              format: date-time
+              example: "2021-11-30T21:47:14-08:00"
+            last_modified_time:
+              type: string
+              format: date-time
+              example: "2021-11-30T21:47:14-08:00"
+            mandatory:
+              type: boolean
+              example: true
+            encrypted:
+              type: boolean
+              example: false
+            edit_permission:
+              type: boolean
+              example: true
+            organization_id:
+              type: string
+              example: "631836344"
+            enabled:
+              type: boolean
+              example: true
+            type:
+              type: string
+              example: drop_down
+            label:
+              type: string
+              example: Vaccinated
+            options:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: Yes
+                  id:
+                    type: string
+                    example: "1901318000003603021"
+              example:
+                - name: No
+                  id: "1901318000003603023"
+                - name: Yes
+                  id: "1901318000003603021"
+
+    Retrieve-Userfield:
+      type: object
+      properties:
+        url:
+          type: string
+          example: /api/v2/userfields/1901318000001602017
+        data:
+          type: object
+          properties:
+            system_defined:
+              type: boolean
+              example: false
+            is_searchable:
+              type: boolean
+              example: false
+            unique_name:
+              type: string
+              example: workshift
+            name:
+              type: string
+              example: Work Shift
+            id:
+              type: string
+              example: "1901318000001602017"
+            creation_time:
+              type: string
+              format: date-time
+              example: "2019-06-13T22:57:01-07:00"
+            last_modified_time:
+              type: string
+              format: date-time
+              example: "2019-08-14T05:13:09-07:00"
+            mandatory:
+              type: boolean
+              example: false
+            encrypted:
+              type: boolean
+              example: false
+            edit_permission:
+              type: boolean
+              example: false
+            organization_id:
+              type: string
+              example: "631836344"
+            enabled:
+              type: boolean
+              example: true
+            type:
+              type: string
+              example: text_field
+            label:
+              type: string
+              example: Work Shift
+            default_value:
+              type: string
+              example: "-"
+
+    UserfieldUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 30
+          description: Displays the name of the userfield.
+          example: Vaccinated
+        mandatory:
+          type: boolean
+          description: Used to specify if all users should have that field.
+          example: true
+        encrypted:
+          type: boolean
+          description: Used to specify if the userfield should be encrypted.
+          example: false
+        edit_permission:
+          type: boolean
+          description: Used to specify whether users can edit this field.
+          example: true
+        options:
+          type: array
+          description: Should be passed in case of drop_down type field.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: ID of the dropdown option.
+                example: "1901318000003603021"
+              name:
+                type: string
+                description: Display name of the dropdown option.
+                example: Yes I have been vaccinated
+          example:
+            - id: "1901318000003603021"
+              name: Yes I have been vaccinated
+            - id: "1901318000003603023"
+              name: No I am yet to get vaccinated
+
+
+    UserfieldUpdateResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          example: /api/v2/userfields/1901318000003603019
+        data:
+          type: object
+          properties:
+            system_defined:
+              type: boolean
+              example: false
+            is_searchable:
+              type: boolean
+              example: false
+            unique_name:
+              type: string
+              example: vaccinated
+            name:
+              type: string
+              example: Vaccinated
+            id:
+              type: string
+              example: "1901318000003603019"
+            creation_time:
+              type: string
+              format: date-time
+              example: "2021-11-30T21:47:14-08:00"
+            last_modified_time:
+              type: string
+              format: date-time
+              example: "2021-11-30T23:32:14-08:00"
+            mandatory:
+              type: boolean
+              example: true
+            encrypted:
+              type: boolean
+              example: false
+            edit_permission:
+              type: boolean
+              example: false
+            organization_id:
+              type: string
+              example: "631836344"
+            enabled:
+              type: boolean
+              example: true
+            type:
+              type: string
+              example: drop_down
+            label:
+              type: string
+              example: Vaccinated
+            default_value:
+              type: string
+              example: No
+            options:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: No I am yet to get vaccinated
+                  id:
+                    type: string
+                    example: "1901318000003603023"
+              example:
+                - name: No I am yet to get vaccinated
+                  id: "1901318000003603023"
+                - name: Yes I have been vaccinated
+                  id: "1901318000003603021"
+
+
+
+
+  securitySchemes:
+    Zoho_Auth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: 'https://accounts.zoho.com/oauth/v2/auth'
+          scopes:
+            ZohoCliq.Users.READ: Read Users
+            ZohoCliq.UserFields.CREATE : Create new Users
+            ZohoCliq.Userfields.UPDATE : Update Userfields
+            ZohoCliq.Userfields.DELETE: Delete Userfields

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
   theme: Theme;
@@ -13,14 +13,21 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>('system');
   const [mounted, setMounted] = useState(false);
+
+  // Get actual theme (resolve 'system' to 'light' or 'dark')
+  const getActualTheme = (themeValue: Theme): 'light' | 'dark' => {
+    if (themeValue === 'system') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return themeValue;
+  };
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const initialTheme = savedTheme || systemTheme;
+    const initialTheme = savedTheme || 'system';
     
     setThemeState(initialTheme);
     setMounted(true);
@@ -30,9 +37,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (mounted) {
       const root = window.document.documentElement;
+      const actualTheme = getActualTheme(theme);
       root.classList.remove('light', 'dark');
-      root.classList.add(theme);
+      root.classList.add(actualTheme);
       localStorage.setItem('theme', theme);
+    }
+  }, [theme, mounted]);
+
+  // Listen for system theme changes when using 'system' theme
+  useEffect(() => {
+    if (mounted && theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => {
+        const root = window.document.documentElement;
+        const actualTheme = getActualTheme('system');
+        root.classList.remove('light', 'dark');
+        root.classList.add(actualTheme);
+      };
+      
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
     }
   }, [theme, mounted]);
 
@@ -41,7 +65,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleTheme = () => {
-    setThemeState(prev => prev === 'light' ? 'dark' : 'light');
+    setThemeState(prev => {
+      if (prev === 'light') return 'dark';
+      if (prev === 'dark') return 'light';
+      // If system, toggle to the opposite of current system preference
+      const systemIsDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return systemIsDark ? 'light' : 'dark';
+    });
   };
 
   // Prevent hydration mismatch

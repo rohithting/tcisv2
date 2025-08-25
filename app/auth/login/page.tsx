@@ -133,7 +133,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}
-              placeholder="rohith.namboothiri@ting.in"
+              placeholder="user@ting.in"
               startIcon={<EnvelopeIcon className="h-5 w-5" />}
               fullWidth
               required
