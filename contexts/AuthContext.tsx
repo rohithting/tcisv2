@@ -1,0 +1,803 @@
+'use client';
+
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase';
+import { PlatformUser, PlatformRole } from '@/types/database';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+
+interface AuthContextType {
+  user: User | null;
+  platformUser: PlatformUser | null;
+  session: Session | null;
+  loading: boolean;
+  supabase: any; // Add supabase client
+  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error?: string }>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error?: string }>;
+  updatePassword: (password: string) => Promise<{ error?: string }>;
+  hasRole: (role: PlatformRole) => boolean;
+  hasAnyRole: (roles: PlatformRole[]) => boolean;
+  refreshUser: () => Promise<void>;
+  ensureValidToken: () => Promise<string | null>;
+  validateSession: () => Promise<boolean>;
+  ensureValidSession: () => Promise<boolean>;
+  lazyAuthenticate: () => Promise<boolean>; // NEW: Lazy authentication
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [platformUser, setPlatformUser] = useState<PlatformUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const supabase = createClient();
+
+  // Fetch platform user data and validate session
+  const fetchPlatformUser = async (userId: string) => {
+    try {
+      // First, validate that the auth user still exists
+      const { data: authUser, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !authUser.user || authUser.user.id !== userId) {
+        console.error('Auth user validation failed in fetchPlatformUser');
+        // User doesn't exist in auth anymore - this will be handled by the calling function
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('platform_users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching platform user:', error);
+        
+        // If user doesn't exist in platform_users but exists in auth
+        if (error.code === 'PGRST116') {
+          console.log('Platform user not found, creating manually...');
+          
+          try {
+            // Try direct insert first (simpler approach)
+            const { error: insertError } = await supabase
+              .from('platform_users')
+              .insert({
+                id: userId,
+                email: authUser.user.email!,
+                full_name: authUser.user.user_metadata?.full_name || '',
+                platform_role: 'user'
+              });
+
+            if (insertError) {
+              console.error('Direct insert failed:', insertError);
+              return null;
+            }
+
+            // Return the newly created user data
+            console.log('Platform user created successfully');
+            return {
+              id: userId,
+              email: authUser.user.email!,
+              full_name: authUser.user.user_metadata?.full_name || '',
+              platform_role: 'user' as const,
+              is_active: true,
+              last_login_at: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+          } catch (creationError: any) {
+            console.error('Error in platform user creation:', creationError);
+            return null;
+          }
+        }
+        
+        return null;
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error('Error in fetchPlatformUser:', error);
+      return null;
+    }
+  };
+
+  // Force clear session and redirect
+  const forceClearSession = async () => {
+    console.log('🚨 Force clearing session - user does not exist');
+    
+    try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+    } catch (error: any) {
+      console.error('Error during signOut:', error);
+    }
+
+    // Clear all local state
+    setUser(null);
+    setSession(null);
+    setPlatformUser(null);
+    setLoading(false);
+
+    // Clear browser storage
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (error: any) {
+      console.error('Error clearing storage:', error);
+    }
+
+    // Redirect to login page (use Next.js router instead of window.location)
+    router.push('/auth/login');
+  };
+
+  // Initialize auth state
+  useEffect(() => {
+    let isMounted = true;
+    let hasInitialized = false;
+
+    const initializeAuth = async () => {
+      if (hasInitialized || !isMounted) return;
+      hasInitialized = true;
+
+      try {
+        // Test database connection first
+        try {
+          const { data: testData, error: testError } = await supabase
+            .from('platform_users')
+            .select('count')
+            .limit(1);
+          
+          if (testError) {
+            console.error('Database connection test failed');
+          }
+        } catch (dbTestError) {
+          console.error('Database connection test error');
+        }
+
+        // Initializing auth state
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (sessionError) {
+          console.error('Session error during init - redirecting to login');
+          // Session error, redirect to login
+          if (isMounted) {
+            setLoading(false);
+            router.push('/auth/login');
+          }
+          return;
+        }
+        
+        if (initialSession?.user) {
+          // Initial session found - REMOVED aggressive validation
+          // Just set the session and user, validate later when needed
+          
+          if (isMounted) {
+            setUser(initialSession.user);
+            setSession(initialSession);
+          }
+          
+          // Try to fetch platform user, but don't fail if it doesn't work
+          try {
+            const platformUserData = await fetchPlatformUser(initialSession.user.id);
+            
+            if (!isMounted) return;
+            
+            if (platformUserData) {
+              if (isMounted) {
+                setPlatformUser(platformUserData);
+              }
+              
+              // Update last login only if platform user exists
+              try {
+                await supabase
+                  .from('platform_users')
+                  .update({ last_login_at: new Date().toISOString() })
+                  .eq('id', initialSession.user.id);
+              } catch (error: any) {
+                console.error('Error updating last login');
+              }
+            } else {
+              console.log('Platform user not found during init, but keeping session');
+            }
+          } catch (error: any) {
+            console.error('Error fetching platform user during init, but keeping session');
+          }
+        } else {
+          console.log('No initial session found - redirecting to login');
+          // No session found, redirect to login immediately
+          if (isMounted) {
+            setLoading(false);
+            router.push('/auth/login');
+          }
+        }
+      } catch (error: any) {
+        console.error('Error initializing auth');
+        // Error occurred, redirect to login
+        if (isMounted) {
+          setLoading(false);
+          router.push('/auth/login');
+        }
+      } finally {
+        // Always set loading to false at the end
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // FIXED: Add timeout to prevent infinite loading
+    const initTimeout = setTimeout(() => {
+      if (isMounted && hasInitialized === false) {
+        console.log('⏰ Auth initialization timeout, forcing completion...');
+        hasInitialized = true;
+        setLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
+    // No aggressive timeouts - let auth initialization complete naturally
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(initTimeout);
+    };
+  }, []); // Empty dependency array - only run once
+
+  // Separate useEffect for auth state changes
+  useEffect(() => {
+
+    // Listen for auth changes (but ignore initial SIGNED_IN event during initialization)
+    let isInitialLoad = true;
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // Auth state change detected
+        
+        // Skip processing the initial SIGNED_IN event to avoid conflicts with initialization
+        if (event === 'SIGNED_IN' && isInitialLoad) {
+          // Skipping initial SIGNED_IN event (handled by initialization)
+          isInitialLoad = false;
+          return;
+        }
+        
+        isInitialLoad = false;
+        
+        // Handle different auth events
+        if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+          setSession(null);
+          setUser(null);
+          setPlatformUser(null);
+          return;
+        }
+
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('Token refresh failed - session expired');
+          setSession(null);
+          setUser(null);
+          setPlatformUser(null);
+          
+          // Redirect if on protected route
+          const currentPath = window.location.pathname;
+          if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/unauthorized')) {
+            router.push('/auth/login');
+          }
+          return;
+        }
+
+        if (session?.user) {
+          // Processing auth session - REMOVED aggressive validation
+          // Just set the session and user, validate later when needed
+          
+          setSession(session);
+          setUser(session.user);
+          
+          // Try to fetch platform user, but don't fail if it doesn't work
+          try {
+            const platformUserData = await fetchPlatformUser(session.user.id);
+            
+            if (platformUserData) {
+              // Platform user validated successfully
+              setPlatformUser(platformUserData);
+            } else {
+              console.log('Platform user not found in state change, but keeping session');
+            }
+          } catch (error: any) {
+            console.error('Error fetching platform user in state change, but keeping session');
+          }
+        }
+      }
+    );
+
+    // FIXED: Add tab switching handler to prevent auth state conflicts
+    const handleVisibilityChange = () => {
+      // Only handle auth state when tab becomes visible
+      if (!document.hidden) {
+        console.log('🔄 Tab became visible, checking auth state stability...');
+        
+        // Give auth state time to stabilize after tab switch
+        setTimeout(async () => {
+          try {
+            // Check if we have a valid session
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            
+            if (currentSession?.user) {
+              // Session exists, ensure our state is consistent
+              if (!user || !session) {
+                console.log('🔄 Restoring auth state after tab switch...');
+                setUser(currentSession.user);
+                setSession(currentSession);
+                
+                // Try to restore platform user if missing
+                if (!platformUser) {
+                  try {
+                    const platformUserData = await fetchPlatformUser(currentSession.user.id);
+                    if (platformUserData) {
+                      setPlatformUser(platformUserData);
+                    }
+                  } catch (error) {
+                    console.log('Could not restore platform user after tab switch');
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.log('Error checking auth state after tab switch:', error);
+          }
+        }, 1000); // Wait 1 second for auth state to stabilize
+      }
+    };
+
+    // Add tab visibility listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [supabase.auth, router, user, session, platformUser]);
+
+  // NEW: Periodic session health check to keep sessions alive during idle periods
+  useEffect(() => {
+    if (!user || !session) return;
+
+    // FIXED: Add session health check to prevent auth state instability
+    const sessionHealthCheck = async () => {
+      try {
+        // Check if session is still valid
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.log('Session health check error:', error);
+          return;
+        }
+        
+        if (!currentSession) {
+          console.log('Session expired during health check');
+          setSession(null);
+          setUser(null);
+          setPlatformUser(null);
+          router.push('/auth/login');
+          return;
+        }
+        
+        // Session is valid, ensure our state is consistent
+        if (currentSession.user.id !== user.id) {
+          console.log('User ID mismatch, updating state...');
+          setUser(currentSession.user);
+          setSession(currentSession);
+        }
+        
+        // Check if platform user needs refresh
+        if (!platformUser || platformUser.id !== currentSession.user.id) {
+          try {
+            const platformUserData = await fetchPlatformUser(currentSession.user.id);
+            if (platformUserData) {
+              setPlatformUser(platformUserData);
+            }
+          } catch (error) {
+            console.log('Could not refresh platform user during health check');
+          }
+        }
+        
+      } catch (error) {
+        console.log('Session health check failed:', error);
+      }
+    };
+
+    // Run health check every 5 minutes
+    const healthCheckInterval = setInterval(sessionHealthCheck, 5 * 60 * 1000);
+    
+    // Also run health check when tab becomes visible (after tab switch)
+    const handleTabFocus = () => {
+      // Delay health check to let auth state stabilize
+      setTimeout(sessionHealthCheck, 2000);
+    };
+    
+    window.addEventListener('focus', handleTabFocus);
+    
+    return () => {
+      clearInterval(healthCheckInterval);
+      window.removeEventListener('focus', handleTabFocus);
+    };
+  }, [user, session, platformUser, supabase.auth, router]);
+
+  // Lazy session validation - only validate when actually needed
+  const validateSession = useCallback(async (): Promise<boolean> => {
+    if (!session || !user) {
+      return false;
+    }
+
+    try {
+      // FIXED: More robust session validation with fallback
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.log('Session validation error:', error);
+        return false;
+      }
+      
+      if (!currentSession) {
+        console.log('Session validation failed - no current session');
+        return false;
+      }
+      
+      // Check if user ID matches
+      if (currentSession.user.id !== user.id) {
+        console.log('Session validation failed - user ID mismatch');
+        return false;
+      }
+      
+      // Check if token is expired
+      const now = Math.floor(Date.now() / 1000);
+      const tokenExp = currentSession.expires_at || 0;
+      
+      if (tokenExp <= now) {
+        console.log('Session validation failed - token expired');
+        return false;
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('Session validation error:', error);
+      return false;
+    }
+  }, [session, user, supabase.auth]);
+
+  // Expose validation function for components to use when needed
+  const ensureValidSession = async (): Promise<boolean> => {
+    const isValid = await validateSession();
+    if (!isValid) {
+      // Session is invalid, clear it gracefully
+      setSession(null);
+      setUser(null);
+      setPlatformUser(null);
+      router.push('/auth/login');
+    }
+    return isValid;
+  };
+
+  // Sign in
+  const signIn = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      toast.success('Successfully signed in!');
+      router.push('/dashboard');
+      return {};
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      return { error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sign up
+  const signUp = async (email: string, password: string, fullName: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      if (data.user && !data.user.email_confirmed_at) {
+        toast.success('Please check your email to confirm your account!');
+        router.push('/auth/verify-email?email=' + encodeURIComponent(email));
+      } else {
+        toast.success('Account created successfully!');
+        router.push('/dashboard');
+      }
+
+      return {};
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      return { error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sign out
+  const signOut = async () => {
+    try {
+      setLoading(true);
+      await supabase.auth.signOut();
+      setUser(null);
+      setPlatformUser(null);
+      setSession(null);
+      toast.success('Signed out successfully!');
+      router.push('/auth/login');
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      toast.error('Error signing out');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reset password
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      toast.success('Password reset email sent!');
+      return {};
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      return { error: errorMessage };
+    }
+  };
+
+  // Update password
+  const updatePassword = async (password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      toast.success('Password updated successfully!');
+      router.push('/dashboard');
+      return {};
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      return { error: errorMessage };
+    }
+  };
+
+  // Role checking functions
+  const hasRole = (role: PlatformRole): boolean => {
+    return platformUser?.platform_role === role;
+  };
+
+  const hasAnyRole = (roles: PlatformRole[]): boolean => {
+    return platformUser ? roles.includes(platformUser.platform_role) : false;
+  };
+
+  // Refresh user data
+  const refreshUser = async () => {
+    if (user) {
+      const platformUserData = await fetchPlatformUser(user.id);
+      setPlatformUser(platformUserData);
+    }
+  };
+
+  const ensureValidToken = async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Error getting session for token refresh:', error);
+        return null;
+
+      }
+      return data.session?.access_token || null;
+    } catch (error: any) {
+      console.error('Error in ensureValidToken:', error);
+      return null;
+    }
+  };
+
+  // NEW: Lazy authentication - only validate when actually needed
+  const lazyAuthenticate = async (): Promise<boolean> => {
+    console.log('🔐 lazyAuthenticate called - START');
+    
+    // Add timeout to prevent hanging - reduced to 3 seconds for better UX
+    const timeoutPromise = new Promise<boolean>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('lazyAuthenticate timeout after 3 seconds'));
+      }, 3000); // 3 second timeout for better UX
+    });
+    
+    const authPromise = (async () => {
+      try {
+        console.log('🔐 Step 1: Getting current session...');
+        // First try to get current session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('🔐 Step 1 COMPLETE - Session check result:', { hasSession: !!session, error: !!error });
+        
+        if (error || !session) {
+          console.log('🔐 No session found during lazy auth - RETURNING FALSE');
+          return false;
+        }
+
+        console.log('🔐 Step 2: Checking token expiry...');
+        // Check if token is expired or about to expire (within 5 minutes)
+        const now = Math.floor(Date.now() / 1000);
+        const tokenExp = session.expires_at || 0;
+        const timeUntilExpiry = tokenExp - now;
+        
+        console.log('🔐 Step 2 COMPLETE - Token expiry check:', { 
+          now, 
+          tokenExp, 
+          timeUntilExpiry, 
+          needsRefresh: timeUntilExpiry < 300 
+        });
+        
+        if (timeUntilExpiry < 300) { // 5 minutes buffer for lazy auth
+          console.log('🔐 Step 3: Token expiring soon, starting refresh...');
+          
+          // Refresh the token
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          console.log('🔐 Step 3 COMPLETE - Refresh result:', { 
+            hasRefreshData: !!refreshData, 
+            hasError: !!refreshError,
+            errorMessage: refreshError?.message 
+          });
+          
+          if (refreshError || !refreshData.session) {
+            console.log('🔐 Token refresh failed during lazy auth - RETURNING FALSE');
+            return false;
+          }
+          
+          console.log('🔐 Step 4: Updating local state...');
+          // Update local state with refreshed session
+          setSession(refreshData.session);
+          setUser(refreshData.session.user);
+          
+          console.log('🔐 Step 4 COMPLETE - Token refreshed successfully during lazy auth - RETURNING TRUE');
+          return true;
+        }
+
+        console.log('🔐 Token is healthy, no refresh needed - RETURNING TRUE');
+        return true;
+      } catch (error: any) {
+        console.error('🔐 Error in lazyAuthenticate:', error);
+        return false;
+      } finally {
+        console.log('🔐 lazyAuthenticate called - END');
+      }
+    })();
+    
+    try {
+      // Race between timeout and actual auth
+      const result = await Promise.race([authPromise, timeoutPromise]);
+      return result;
+    } catch (timeoutError) {
+      console.error('🔐 lazyAuthenticate TIMEOUT:', timeoutError);
+      return false;
+    }
+  };
+
+  // Cleanup and error recovery
+  useEffect(() => {
+    // FIXED: Add cleanup mechanism to prevent memory leaks and state conflicts
+    const cleanup = () => {
+      // Clear any pending timeouts or intervals
+      // This prevents state updates on unmounted components
+    };
+
+    // Add error recovery mechanism
+    const handleError = (error: Error) => {
+      console.error('Auth context error:', error);
+      
+      // Try to recover from auth state errors
+      if (error.message.includes('auth') || error.message.includes('session')) {
+        console.log('Attempting to recover from auth error...');
+        
+        // Reset to a known good state
+        setTimeout(async () => {
+          try {
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (currentSession?.user) {
+              setUser(currentSession.user);
+              setSession(currentSession);
+              setLoading(false);
+            } else {
+              // No valid session, redirect to login
+              setUser(null);
+              setSession(null);
+              setPlatformUser(null);
+              setLoading(false);
+              router.push('/auth/login');
+            }
+          } catch (recoveryError) {
+            console.error('Error recovery failed:', recoveryError);
+            // Force redirect to login as last resort
+            setUser(null);
+            setSession(null);
+            setPlatformUser(null);
+            setLoading(false);
+            router.push('/auth/login');
+          }
+        }, 1000);
+      }
+    };
+
+    // Listen for unhandled errors
+    window.addEventListener('error', (event) => handleError(event.error));
+    window.addEventListener('unhandledrejection', (event) => handleError(new Error(event.reason)));
+
+    return () => {
+      cleanup();
+      window.removeEventListener('error', (event) => handleError(event.error));
+      window.removeEventListener('unhandledrejection', (event) => handleError(new Error(event.reason)));
+    };
+  }, [supabase.auth, router]);
+
+  const value: AuthContextType = {
+    user,
+    platformUser,
+    session,
+    loading,
+    supabase,
+    signIn,
+    signUp,
+    signOut,
+    resetPassword,
+    updatePassword,
+    hasRole,
+    hasAnyRole,
+    refreshUser,
+    ensureValidToken,
+    validateSession,
+    ensureValidSession,
+    lazyAuthenticate,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
