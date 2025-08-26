@@ -30,15 +30,15 @@ export function DashboardLayout({
             {/* Page header */}
             {(title || description) && (
               <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-30 backdrop-blur-sm bg-white/95 dark:bg-gray-900/95">
-                <div className="px-4 sm:px-6 lg:px-8 py-6">
+                <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
                   <div className="max-w-7xl mx-auto">
                     {title && (
-                      <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white brand-heading">
+                      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white brand-heading">
                         {title}
                       </h1>
                     )}
                     {description && (
-                      <p className="mt-2 text-base text-gray-600 dark:text-gray-400 max-w-3xl">
+                      <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-3xl">
                         {description}
                       </p>
                     )}
@@ -48,7 +48,7 @@ export function DashboardLayout({
             )}
             
             {/* Page content */}
-            <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+            <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
               <div className="max-w-7xl mx-auto">
                 {children}
               </div>

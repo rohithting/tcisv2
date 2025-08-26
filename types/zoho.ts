@@ -3,7 +3,7 @@
 export interface ZohoAuth {
   id: number;
   access_token: string;
-  refresh_token: string;
+  refresh_token?: string; // Made optional since Zoho doesn't always return it
   expires_at: string;
   scope: string;
   authenticated_by: string;
@@ -120,7 +120,7 @@ export interface CreateZohoMappingRequest {
 
 export interface ZohoAuthSetupRequest {
   access_token: string;
-  refresh_token: string;
+  refresh_token?: string; // Made optional since Zoho doesn't always return it
   expires_in: number;
   scope: string;
   organization_id?: string;

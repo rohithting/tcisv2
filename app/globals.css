@@ -56,6 +56,17 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Improve touch targets on mobile */
+  button, a, input, select, textarea {
+    @apply touch-manipulation;
+  }
+  
+  /* Better scrolling on mobile */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Custom styles for ting branding */
@@ -112,5 +123,196 @@
   
   .mobile-heading {
     @apply text-2xl;
+  }
+  
+  /* Improve touch targets */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Better mobile spacing */
+  .mobile-space-y {
+    @apply space-y-4;
+  }
+  
+  .mobile-space-x {
+    @apply space-x-3;
+  }
+}
+
+/* Tablet responsive utilities */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-padding {
+    @apply px-6 py-8;
+  }
+  
+  .tablet-text {
+    @apply text-base;
+  }
+  
+  .tablet-heading {
+    @apply text-3xl;
+  }
+}
+
+/* Desktop responsive utilities */
+@media (min-width: 1025px) {
+  .desktop-padding {
+    @apply px-8 py-10;
+  }
+  
+  .desktop-text {
+    @apply text-lg;
+  }
+  
+  .desktop-heading {
+    @apply text-4xl;
+  }
+}
+
+/* Improved mobile navigation */
+@media (max-width: 1024px) {
+  .mobile-nav {
+    @apply fixed inset-0 z-50 bg-white dark:bg-gray-900;
+  }
+  
+  .mobile-nav-content {
+    @apply h-full overflow-y-auto;
+  }
+}
+
+/* Better mobile forms */
+@media (max-width: 640px) {
+  .mobile-form {
+    @apply space-y-4;
+  }
+  
+  .mobile-form-input {
+    @apply text-base py-4;
+  }
+  
+  .mobile-form-button {
+    @apply w-full py-4 text-base;
+  }
+}
+
+/* Improved mobile cards */
+@media (max-width: 640px) {
+  .mobile-card {
+    @apply p-4;
+  }
+  
+  .mobile-card-grid {
+    @apply grid-cols-1 gap-4;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-card-grid {
+    @apply grid-cols-2 gap-6;
+  }
+}
+
+/* Better mobile modals */
+@media (max-width: 640px) {
+  .mobile-modal {
+    @apply m-4 max-w-none;
+  }
+  
+  .mobile-modal-content {
+    @apply p-4;
+  }
+}
+
+/* Improved mobile chat interface */
+@media (max-width: 640px) {
+  .mobile-chat-input {
+    @apply text-base py-3;
+  }
+  
+  .mobile-chat-button {
+    @apply min-h-[48px] min-w-[48px];
+  }
+  
+  .mobile-chat-message {
+    @apply max-w-[90%] text-sm;
+  }
+}
+
+/* Better mobile sidebar */
+@media (max-width: 1024px) {
+  .mobile-sidebar {
+    @apply w-full max-w-sm;
+  }
+  
+  .mobile-sidebar-overlay {
+    @apply bg-black/50 backdrop-blur-sm;
+  }
+}
+
+/* Improved mobile tables */
+@media (max-width: 768px) {
+  .mobile-table {
+    @apply block overflow-x-auto;
+  }
+  
+  .mobile-table-row {
+    @apply block border-b border-gray-200 dark:border-gray-700 pb-4 mb-4;
+  }
+  
+  .mobile-table-cell {
+    @apply block text-sm;
+  }
+}
+
+/* Better mobile buttons */
+@media (max-width: 640px) {
+  .mobile-button {
+    @apply min-h-[44px] px-4 text-sm;
+  }
+  
+  .mobile-button-group {
+    @apply flex-col space-y-2 space-x-0;
+  }
+}
+
+/* Improved mobile spacing */
+@media (max-width: 640px) {
+  .mobile-container {
+    @apply px-4;
+  }
+  
+  .mobile-section {
+    @apply py-6;
+  }
+  
+  .mobile-gap {
+    @apply gap-4;
+  }
+}
+
+/* Better mobile typography */
+@media (max-width: 640px) {
+  .mobile-title {
+    @apply text-xl font-semibold;
+  }
+  
+  .mobile-subtitle {
+    @apply text-base;
+  }
+  
+  .mobile-body {
+    @apply text-sm;
+  }
+}
+
+/* Improved mobile shadows and borders */
+@media (max-width: 640px) {
+  .mobile-shadow {
+    @apply shadow-sm;
+  }
+  
+  .mobile-border {
+    @apply border-gray-200 dark:border-gray-700;
   }
 }

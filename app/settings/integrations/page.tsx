@@ -171,9 +171,39 @@ export default function IntegrationsPage() {
       
       setLoading(true);
       try {
-        // TODO: Implement real integrations table when needed
-        // For now, just show empty state
-        setIntegrations([]);
+        const loadedIntegrations: Integration[] = [];
+
+        // Load Zoho Cliq integration if configured
+        const { data: zohoAuth, error: zohoError } = await supabase
+          .from('zoho_auth')
+          .select('*')
+          .single();
+
+        if (zohoAuth && !zohoError) {
+          const expiresAt = new Date(zohoAuth.expires_at);
+          const now = new Date();
+          const isExpired = expiresAt <= now;
+          const daysUntilExpiry = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          loadedIntegrations.push({
+            id: `zoho_cliq_${zohoAuth.id}`,
+            name: 'Zoho Cliq',
+            type: 'zoho_cliq',
+            enabled: !isExpired && zohoAuth.auto_refresh_enabled !== false,
+            status: isExpired ? 'error' : (daysUntilExpiry <= 7 ? 'warning' : 'active'),
+            config: {
+              scope: zohoAuth.scope,
+              authenticated_by: zohoAuth.authenticated_by,
+              expires_at: zohoAuth.expires_at,
+              auto_refresh: zohoAuth.auto_refresh_enabled !== false
+            },
+            created_at: zohoAuth.created_at,
+            updated_at: zohoAuth.updated_at,
+            last_used: zohoAuth.updated_at
+          });
+        }
+
+        setIntegrations(loadedIntegrations);
       } catch (error) {
         console.error('Error loading integrations:', error);
         toast.error('Failed to load integrations');
@@ -203,10 +233,21 @@ export default function IntegrationsPage() {
   };
 
   const handleDeleteIntegration = async (integrationId: string) => {
-    if (!confirm('Are you sure you want to delete this integration?')) return;
+    if (!confirm('Are you sure you want to delete this integration? This will disable all channel mappings and stop automatic syncing.')) return;
 
     try {
-      // Mock deletion - would integrate with real API
+      const integration = integrations.find(i => i.id === integrationId);
+      
+      if (integration?.type === 'zoho_cliq') {
+        // Delete Zoho auth from database
+        const { error } = await supabase
+          .from('zoho_auth')
+          .delete()
+          .eq('id', integrationId.replace('zoho_cliq_', ''));
+
+        if (error) throw error;
+      }
+
       setIntegrations(prev => prev.filter(i => i.id !== integrationId));
       toast.success('Integration deleted successfully');
     } catch (error) {
@@ -217,7 +258,18 @@ export default function IntegrationsPage() {
 
   const handleToggleIntegration = async (integrationId: string, enabled: boolean) => {
     try {
-      // Mock toggle - would integrate with real API
+      const integration = integrations.find(i => i.id === integrationId);
+      
+      if (integration?.type === 'zoho_cliq') {
+        // Update auto_refresh_enabled in database
+        const { error } = await supabase
+          .from('zoho_auth')
+          .update({ auto_refresh_enabled: enabled })
+          .eq('id', integrationId.replace('zoho_cliq_', ''));
+
+        if (error) throw error;
+      }
+
       setIntegrations(prev => prev.map(i => 
         i.id === integrationId 
           ? { ...i, enabled, status: enabled ? 'active' : 'disabled' }
@@ -305,8 +357,26 @@ export default function IntegrationsPage() {
 
   const testIntegration = async (integration: Integration) => {
     try {
-      // Mock test - would integrate with real API
-      toast.success('Integration test successful!');
+      if (integration.type === 'zoho_cliq') {
+        // Test Zoho Cliq connection via Edge Function
+        const response = await supabase.functions.invoke('zoho-test-connection', {
+          body: { action: 'test' }
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message || 'Connection test failed');
+        }
+
+        const result = response.data;
+        if (result.success) {
+          toast.success(`Zoho Cliq test successful! Found ${result.channels_count || 0} channels.`);
+        } else {
+          throw new Error(result.error || 'Connection test failed');
+        }
+      } else {
+        // Mock test for other integrations
+        toast.success('Integration test successful!');
+      }
       
       // Update last_used
       setIntegrations(prev => prev.map(i => 
@@ -316,13 +386,14 @@ export default function IntegrationsPage() {
       ));
     } catch (error) {
       console.error('Error testing integration:', error);
-      toast.error('Integration test failed');
+      toast.error(`Integration test failed: ${error.message}`);
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'active': return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
+      case 'warning': return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />;
       case 'error': return <XCircleIcon className="h-5 w-5 text-red-500" />;
       default: return <XCircleIcon className="h-5 w-5 text-gray-400" />;
     }

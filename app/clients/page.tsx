@@ -196,10 +196,10 @@ export default function ClientsPage() {
       description="Manage your clients and their chat data analysis"
       allowedRoles={['super_admin', 'backend', 'admin']}
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header Actions */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-auto">
             {/* Search */}
             <div className="relative flex-1 lg:w-80">
               <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -233,56 +233,57 @@ export default function ClientsPage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <Button variant="outline" onClick={() => window.location.reload()}>
               <ArrowPathIcon className="h-4 w-4 mr-2" />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
             
             <RoleGuard allowedRoles={['super_admin', 'backend']} showFallback={false}>
               <Button onClick={() => setShowCreateModal(true)}>
                 <PlusIcon className="h-4 w-4 mr-2" />
-                Add Client
+                <span className="hidden sm:inline">Add Client</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </RoleGuard>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <StatsCard
             title="Total Clients"
             value={clients.length.toString()}
             subtitle={`${clients.filter(c => c.is_active).length} active`}
-            icon={<BuildingOfficeIcon className="h-6 w-6" />}
+            icon={<BuildingOfficeIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
             trend=""
           />
           <StatsCard
             title="Total Rooms"
             value={clients.reduce((acc, client) => acc + client.room_count, 0).toString()}
             subtitle="Across all clients"
-            icon={<ChatBubbleLeftRightIcon className="h-6 w-6" />}
+            icon={<ChatBubbleLeftRightIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
             trend=""
           />
           <StatsCard
             title="Total Messages"
             value={`${(clients.reduce((acc, client) => acc + (client.total_messages || 0), 0) / 1000).toFixed(1)}K`}
             subtitle="Messages processed"
-            icon={<DocumentArrowUpIcon className="h-6 w-6" />}
+            icon={<DocumentArrowUpIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
             trend=""
           />
           <StatsCard
             title="Total Uploads"
             value={clients.reduce((acc, client) => acc + (client.total_uploads || 0), 0).toString()}
             subtitle="Files uploaded"
-            icon={<DocumentArrowUpIcon className="h-6 w-6" />}
+            icon={<DocumentArrowUpIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
             trend=""
           />
         </div>
 
         {/* Clients Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[...Array(6)].map((_, i) => (
               <ClientCardSkeleton key={i} />
             ))}
@@ -294,7 +295,7 @@ export default function ClientsPage() {
             hasClients={clients.length > 0}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredClients.map((client) => (
               <ClientCard 
                 key={client.id} 
@@ -364,15 +365,15 @@ function StatsCard({ title, value, subtitle, icon, trend }: StatsCardProps) {
   const isPositive = trend.startsWith('+');
   
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="p-3 bg-gradient-to-br from-[#ffe600]/10 to-[#ffe600]/5 rounded-xl">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div className="p-2 sm:p-3 bg-gradient-to-br from-[#ffe600]/10 to-[#ffe600]/5 rounded-xl">
           <div className="text-[#ffe600]">
             {icon}
           </div>
         </div>
         <div className={cn(
-          "text-sm font-medium px-2 py-1 rounded-full",
+          "text-xs sm:text-sm font-medium px-2 py-1 rounded-full",
           isPositive 
             ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/20"
             : "text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/20"
@@ -380,7 +381,7 @@ function StatsCard({ title, value, subtitle, icon, trend }: StatsCardProps) {
           {trend}
         </div>
       </div>
-      <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+      <div className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-1">
         {value}
       </div>
       <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -425,10 +426,10 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
   };
 
   return (
-    <div className="group bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-300 hover:-translate-y-1">
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-[#ffe600]/10 to-[#ffe600]/5 rounded-xl flex items-center justify-center">
-          <BuildingOfficeIcon className="h-6 w-6 text-[#ffe600]" />
+    <div className="group bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-300 hover:-translate-y-1">
+      <div className="flex items-start justify-between mb-3 sm:mb-4">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#ffe600]/10 to-[#ffe600]/5 rounded-xl flex items-center justify-center flex-shrink-0">
+          <BuildingOfficeIcon className="h-5 w-5 sm:h-6 sm:w-6 text-[#ffe600]" />
         </div>
         <div className="flex items-center space-x-2">
           <div className={cn(
@@ -447,7 +448,7 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
           <div className="relative" ref={contextMenuRef}>
             <button 
               onClick={() => setShowContextMenu(!showContextMenu)}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 min-h-[32px] min-w-[32px] touch-target"
             >
               <EllipsisVerticalIcon className="h-4 w-4 text-gray-400" />
             </button>
@@ -457,29 +458,29 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
                 <div className="py-1">
                   <button
                     onClick={handleManageClient}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center min-h-[44px] touch-target"
                   >
                     <Cog6ToothIcon className="h-4 w-4 mr-2" />
                     Edit Client
                   </button>
                   <button
                     onClick={() => onNavigate(`/clients/${client.id}/rooms`)}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center min-h-[44px] touch-target"
                   >
                     <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />
                     Manage Rooms
                   </button>
                   <button
                     onClick={() => onNavigate(`/clients/${client.id}/jobs`)}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center min-h-[44px] touch-target"
                   >
                     <ClockIcon className="h-4 w-4 mr-2" />
                     View Jobs
                   </button>
-                  <div className="border-t border-gray-200 dark:border-gray-700 my_1" />
+                  <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                   <button
                     onClick={() => onNavigate(`/chat/${client.id}/conversations`)}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center min-h-[44px] touch-target"
                   >
                     <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />
                     Start Chat Analysis
@@ -489,7 +490,7 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
                       <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                       <button
                         onClick={handleDeleteClient}
-                        className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center min-h-[44px] touch-target"
                       >
                         <ExclamationTriangleIcon className="h-4 w-4 mr-2" />
                         Delete Client
@@ -503,17 +504,17 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
         </div>
       </div>
 
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-gray-800 dark:group-hover:text-gray-100">
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-gray-800 dark:group-hover:text-gray-100">
         {client.name}
       </h3>
       
       {client.description && (
-        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 sm:mb-4 line-clamp-2">
           {client.description}
         </p>
       )}
 
-      <div className="space-y-3 mb-4">
+      <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-500 dark:text-gray-400">Chat Rooms</span>
           <span className="font-medium text-gray-900 dark:text-white">{client.room_count}</span>
@@ -530,13 +531,13 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
         </div>
       </div>
 
-      <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
+      <div className="pt-3 sm:pt-4 border-t border-gray-100 dark:border-gray-800 space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => onNavigate(`/clients/${client.id}/rooms`)}
-            className="text-xs"
+            className="text-xs min-h-[40px] touch-target"
           >
             <DocumentArrowUpIcon className="h-3 w-3 mr-1" />
             Upload
@@ -545,7 +546,7 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
             variant="outline" 
             size="sm" 
             onClick={() => onNavigate(`/chat/${client.id}/conversations`)}
-            className="text-xs"
+            className="text-xs min-h-[40px] touch-target"
           >
             <ChatBubbleLeftRightIcon className="h-3 w-3 mr-1" />
             Chat
@@ -556,7 +557,7 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
           size="sm" 
           fullWidth 
           onClick={handleManageClient}
-          className="group-hover:bg-[#ffe600] group-hover:text-black group-hover:border-[#ffe600]"
+          className="group-hover:bg-[#ffe600] group-hover:text-black group-hover:border-[#ffe600] min-h-[40px] touch-target"
         >
           <span>Manage Client</span>
           <ChevronRightIcon className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
@@ -568,14 +569,14 @@ function ClientCard({ client, onEdit, onDelete, onNavigate }: ClientCardProps) {
 
 function ClientCardSkeleton() {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm animate-pulse">
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 shadow-sm animate-pulse">
+      <div className="flex items-start justify-between mb-3 sm:mb-4">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
         <div className="w-16 h-6 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
       </div>
       <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4 w-3/4"></div>
-      <div className="space-y-2 mb-4">
+      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-3 sm:mb-4 w-3/4"></div>
+      <div className="space-y-2 mb-3 sm:mb-4">
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
@@ -595,12 +596,12 @@ function EmptyState({ searchQuery, onCreateClick, hasClients }: EmptyStateProps)
   // If there are no clients at all (not just filtered), show a different message
   if (!hasClients && !searchQuery) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center">
-        <BuildingOfficeIcon className="h-16 w-16 text-gray-400 mx-auto mb-6" />
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 sm:p-12 text-center">
+        <BuildingOfficeIcon className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4 sm:mb-6" />
+        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
           Welcome to TCIS!
         </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto">
           You haven't added any clients yet. Get started by creating your first client to begin analyzing chat data.
         </p>
         
@@ -616,12 +617,12 @@ function EmptyState({ searchQuery, onCreateClick, hasClients }: EmptyStateProps)
 
   // Show filtered results message
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center">
-      <BuildingOfficeIcon className="h-16 w-16 text-gray-400 mx-auto mb-6" />
-      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 sm:p-12 text-center">
+      <BuildingOfficeIcon className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4 sm:mb-6" />
+      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
         {searchQuery ? 'No clients found' : 'No clients yet'}
       </h3>
-      <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto">
         {searchQuery 
           ? `No clients match "${searchQuery}". Try adjusting your search terms.`
           : 'Get started by adding your first client to begin analyzing their chat data with TCIS.'
@@ -688,7 +689,7 @@ function CreateClientModal({ onClose, onSuccess }: { onClose: () => void; onSucc
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={onClose}></div>
         
         <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 w-full max-w-md">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Create New Client
             </h3>
@@ -810,7 +811,7 @@ function EditClientModal({ client, onClose, onSave }: EditClientModalProps) {
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={onClose}></div>
         
         <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 w-full max-w-md">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Edit Client
             </h3>
@@ -916,7 +917,7 @@ function DeleteClientModal({ client, onClose, onConfirm }: DeleteClientModalProp
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={onClose}></div>
         
         <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 w-full max-w-md">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
                 <ExclamationTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
@@ -927,7 +928,7 @@ function DeleteClientModal({ client, onClose, onConfirm }: DeleteClientModalProp
             </div>
             
             <div className="mb-6">
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4">
                 Are you sure you want to delete <strong>"{client.name}"</strong>? 
                 This action cannot be undone and will permanently delete:
               </p>

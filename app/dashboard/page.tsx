@@ -131,20 +131,20 @@ export default function DashboardPage() {
       }
     >
       {loading ? (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-8 sm:py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ffe600]"></div>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Platform Overview Stats */}
           {platformUser?.platform_role !== 'user' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               <StatCard
                 title="Total Clients"
                 value={dashboardStats.totalClients}
                 change="+12%"
                 changeType="positive"
-                icon={<BuildingOfficeIcon className="h-6 w-6" />}
+                icon={<BuildingOfficeIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
                 color="blue"
               />
               <StatCard
@@ -152,7 +152,7 @@ export default function DashboardPage() {
                 value={dashboardStats.totalConversations}
                 change="+8%"
                 changeType="positive"
-                icon={<ChatBubbleLeftRightIcon className="h-6 w-6" />}
+                icon={<ChatBubbleLeftRightIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
                 color="green"
               />
               <StatCard
@@ -160,7 +160,7 @@ export default function DashboardPage() {
                 value={dashboardStats.totalMessages}
                 change="+23%"
                 changeType="positive"
-                icon={<DocumentTextIcon className="h-6 w-6" />}
+                icon={<DocumentTextIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
                 color="purple"
               />
               <StatCard
@@ -168,7 +168,7 @@ export default function DashboardPage() {
                 value={dashboardStats.pendingTasks}
                 change="+5%"
                 changeType="warning"
-                icon={<ClockIcon className="h-6 w-6" />}
+                icon={<ClockIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
                 color="yellow"
               />
             </div>
@@ -176,7 +176,7 @@ export default function DashboardPage() {
 
           {/* System Health & Quick Actions */}
           {platformUser?.platform_role !== 'user' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* System Health */}
               <div className="lg:col-span-1">
                 <SystemHealthCard health={dashboardStats.systemHealth} />
@@ -190,7 +190,7 @@ export default function DashboardPage() {
           )}
 
           {/* Role-based Dashboard */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {getRoleDashboard(platformUser)}
           </div>
 
@@ -212,12 +212,12 @@ function getRoleDashboard(platformUser: any) {
   switch (platformUser.platform_role) {
     case 'user':
       return (
-        <div className="text-center py-12">
-          <ExclamationTriangleIcon className="h-16 w-16 text-yellow-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+        <div className="text-center py-8 sm:py-12">
+          <ExclamationTriangleIcon className="h-12 w-12 sm:h-16 sm:w-16 text-yellow-500 mx-auto mb-4 sm:mb-6" />
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
             No Client Access
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 sm:mb-6 max-w-md mx-auto px-4">
             You currently don't have access to any clients. Please contact your administrator 
             for assignment to get started with <span className="ting-text font-semibold">ting</span> TCIS.
           </p>
@@ -234,32 +234,32 @@ function getRoleDashboard(platformUser: any) {
 
     case 'super_admin':
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <DashboardCard
             title="Platform Users"
             description="Manage all platform users and roles"
-            icon={<UserCircleIcon className="h-8 w-8" />}
+            icon={<UserCircleIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/dashboard/users"
             color="blue"
           />
           <DashboardCard
             title="Clients"
             description="View and manage all clients"
-            icon={<BuildingOfficeIcon className="h-8 w-8" />}
+            icon={<BuildingOfficeIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/clients"
             color="green"
           />
           <DashboardCard
             title="System Settings"
             description="Configure platform settings"
-            icon={<Cog6ToothIcon className="h-8 w-8" />}
+            icon={<Cog6ToothIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/settings"
             color="purple"
           />
           <DashboardCard
             title="Analytics"
             description="Platform-wide analytics and insights"
-            icon={<ChartBarIcon className="h-8 w-8" />}
+            icon={<ChartBarIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/analytics"
             color="yellow"
           />
@@ -268,25 +268,25 @@ function getRoleDashboard(platformUser: any) {
 
     case 'backend':
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <DashboardCard
             title="All Clients"
             description="View all clients and their data"
-            icon={<BuildingOfficeIcon className="h-8 w-8" />}
+            icon={<BuildingOfficeIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/clients"
             color="blue"
           />
           <DashboardCard
             title="Chat Analysis"
             description="Start chat analysis sessions"
-            icon={<ChatBubbleLeftRightIcon className="h-8 w-8" />}
+            icon={<ChatBubbleLeftRightIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/chat"
             color="green"
           />
           <DashboardCard
             title="Upload Monitor"
             description="Monitor upload status and processing"
-            icon={<DocumentArrowUpIcon className="h-8 w-8" />}
+            icon={<DocumentArrowUpIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/clients"
             color="purple"
           />
@@ -295,25 +295,25 @@ function getRoleDashboard(platformUser: any) {
 
     case 'admin':
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <DashboardCard
             title="My Clients"
             description="Manage your assigned clients"
-            icon={<BuildingOfficeIcon className="h-8 w-8" />}
+            icon={<BuildingOfficeIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/clients"
             color="blue"
           />
           <DashboardCard
             title="Chat Analysis"
             description="Start chat analysis sessions"
-            icon={<ChatBubbleLeftRightIcon className="h-8 w-8" />}
+            icon={<ChatBubbleLeftRightIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/chat"
             color="green"
           />
           <DashboardCard
             title="Upload & Process"
             description="Upload files and monitor jobs"
-            icon={<DocumentArrowUpIcon className="h-8 w-8" />}
+            icon={<DocumentArrowUpIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/clients"
             color="purple"
           />
@@ -322,18 +322,18 @@ function getRoleDashboard(platformUser: any) {
 
     case 'manager':
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <DashboardCard
             title="Chat Analysis"
             description="Begin new chat analysis sessions"
-            icon={<ChatBubbleLeftRightIcon className="h-8 w-8" />}
+            icon={<ChatBubbleLeftRightIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/chat"
             color="blue"
           />
           <DashboardCard
             title="My Conversations"
             description="View your conversation history"
-            icon={<ChartBarIcon className="h-8 w-8" />}
+            icon={<ChartBarIcon className="h-6 w-6 sm:h-8 sm:w-8" />}
             href="/chat"
             color="green"
           />
@@ -342,7 +342,7 @@ function getRoleDashboard(platformUser: any) {
 
     default:
       return (
-        <div className="text-center py-12">
+        <div className="text-center py-8 sm:py-12">
           <p className="text-gray-600 dark:text-gray-400">
             Unknown role: {platformUser.platform_role}
           </p>
@@ -377,20 +377,20 @@ function DashboardCard({ title, description, icon, href, color }: DashboardCardP
   return (
     <a
       href={href}
-      className={`group block p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-300 hover:-translate-y-1 ${hoverClasses[color]}`}
+      className={`group block p-4 sm:p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-300 hover:-translate-y-1 ${hoverClasses[color]}`}
     >
-      <div className={`inline-flex p-4 rounded-xl ${colorClasses[color]} mb-4 group-hover:scale-110 transition-transform duration-300`}>
+      <div className={`inline-flex p-3 sm:p-4 rounded-xl ${colorClasses[color]} mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}>
         {icon}
       </div>
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-gray-800 dark:group-hover:text-gray-100">
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-gray-800 dark:group-hover:text-gray-100">
         {title}
       </h3>
-      <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+      <p className="text-sm text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
         {description}
       </p>
       
       {/* Arrow indicator */}
-      <div className="mt-4 flex items-center text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-300">
+      <div className="mt-3 sm:mt-4 flex items-center text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-300">
         <span className="text-sm font-medium">Learn more</span>
         <ChevronRightIcon className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
       </div>
@@ -423,17 +423,23 @@ function StatCard({ title, value, change, changeType, icon, color }: StatCardPro
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-lg transition-all duration-300">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-lg transition-all duration-300">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div className={`p-2 sm:p-3 rounded-xl ${colorClasses[color]}`}>
           {icon}
         </div>
-        <div className={`flex items-center text-sm font-medium ${changeClasses[changeType]}`}>
-          <ArrowTrendingUpIcon className={`h-4 w-4 mr-1 ${changeType === 'negative' ? 'rotate-180' : ''}`} />
+        <div className={cn(
+          "text-xs sm:text-sm font-medium px-2 py-1 rounded-full",
+          changeType === 'positive'
+            ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/20"
+            : changeType === 'negative'
+            ? "text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/20"
+            : "text-yellow-700 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/20"
+        )}>
           {change}
         </div>
       </div>
-      <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+      <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
         {value.toLocaleString()}
       </div>
       <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -477,13 +483,13 @@ function SystemHealthCard({ health }: SystemHealthCardProps) {
   const Icon = config.icon;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
-      <div className="flex items-center space-x-3 mb-4">
-        <div className={`p-3 rounded-xl ${config.bg}`}>
-          <Icon className={`h-6 w-6 ${config.color}`} />
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+      <div className="flex items-center space-x-3 mb-3 sm:mb-4">
+        <div className={`p-2 sm:p-3 rounded-xl ${config.bg}`}>
+          <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${config.color}`} />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
             System Health
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -491,7 +497,7 @@ function SystemHealthCard({ health }: SystemHealthCardProps) {
           </p>
         </div>
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
         {config.description}
       </p>
       <div className="flex items-center space-x-2">
@@ -518,7 +524,7 @@ function QuickActionsCard({ platformUser }: QuickActionsCardProps) {
     {
       title: 'Create Client',
       description: 'Add a new client to the platform',
-      icon: <BuildingOfficeIcon className="h-5 w-5" />,
+      icon: <BuildingOfficeIcon className="h-4 w-5 sm:h-5 sm:w-5" />,
       href: '/clients',
       color: 'blue',
       roles: ['super_admin', 'backend', 'admin']
@@ -526,7 +532,7 @@ function QuickActionsCard({ platformUser }: QuickActionsCardProps) {
     {
       title: 'Start Chat',
       description: 'Begin a new conversation analysis',
-      icon: <ChatBubbleLeftRightIcon className="h-5 w-5" />,
+      icon: <ChatBubbleLeftRightIcon className="h-4 w-5 sm:h-5 sm:w-5" />,
       href: '/chat',
       color: 'green',
       roles: ['super_admin', 'backend', 'admin', 'manager']
@@ -534,7 +540,7 @@ function QuickActionsCard({ platformUser }: QuickActionsCardProps) {
     {
       title: 'Upload Files',
       description: 'Process new chat exports',
-      icon: <DocumentArrowUpIcon className="h-5 w-5" />,
+      icon: <DocumentArrowUpIcon className="h-4 w-5 sm:h-5 sm:w-5" />,
       href: '/clients',
       color: 'purple',
       roles: ['super_admin', 'backend', 'admin']
@@ -542,7 +548,7 @@ function QuickActionsCard({ platformUser }: QuickActionsCardProps) {
     {
       title: 'View Analytics',
       description: 'Check platform performance',
-      icon: <ChartBarIcon className="h-5 w-5" />,
+      icon: <ChartBarIcon className="h-4 w-5 sm:h-5 sm:w-5" />,
       href: '/analytics',
       color: 'yellow',
       roles: ['super_admin', 'backend', 'admin']
@@ -554,16 +560,16 @@ function QuickActionsCard({ platformUser }: QuickActionsCardProps) {
   );
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
+      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4">
         Quick Actions
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {filteredActions.map((action, index) => (
           <a
             key={index}
             href={action.href}
-            className="group p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200"
+            className="group p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200"
           >
             <div className="flex items-center space-x-3">
               <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-800 group-hover:scale-110 transition-transform duration-200`}>
@@ -577,11 +583,11 @@ function QuickActionsCard({ platformUser }: QuickActionsCardProps) {
                   {action.icon}
                 </div>
               </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300">
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 truncate">
                   {action.title}
                 </h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                   {action.description}
                 </p>
               </div>
@@ -601,32 +607,32 @@ interface RecentActivityCardProps {
 function RecentActivityCard({ activities }: RecentActivityCardProps) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
           Recent Activity
         </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
           Latest conversations and platform activity
         </p>
       </div>
-      <div className="p-6">
-        <div className="space-y-4">
+      <div className="p-4 sm:p-6">
+        <div className="space-y-3 sm:space-y-4">
           {activities.map((activity) => (
-            <div key={activity.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+            <div key={activity.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-2 sm:space-y-0">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-[#ffe600]/10 to-[#ffe600]/5 rounded-lg flex items-center justify-center">
-                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-[#ffe600]" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-[#ffe600]/10 to-[#ffe600]/5 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <ChatBubbleLeftRightIcon className="h-4 w-4 sm:h-5 sm:w-5 text-[#ffe600]" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {activity.title}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     {activity.clients.name}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {new Date(activity.created_at).toLocaleDateString()}
                 </p>
@@ -637,7 +643,7 @@ function RecentActivityCard({ activities }: RecentActivityCardProps) {
             </div>
           ))}
         </div>
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button variant="outline" className="w-full">
             View All Activity
           </Button>

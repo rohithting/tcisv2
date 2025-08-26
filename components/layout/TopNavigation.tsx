@@ -91,7 +91,7 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
       'bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40 backdrop-blur-sm bg-white/95 dark:bg-gray-900/95',
       className
     )}>
-      <div className="px-4 sm:px-6 lg:px-8 py-4">
+      <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
         <div className="flex items-center justify-between">
           {/* Left side - Logo and hamburger for mobile */}
           <div className="lg:hidden flex items-center">
@@ -99,7 +99,7 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
             {onSidebarToggle && (
               <button
                 type="button"
-                className="p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 mr-3"
+                className="p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 mr-2 sm:mr-3 min-h-[44px] min-w-[44px] touch-target"
                 onClick={onSidebarToggle}
                 aria-label="Toggle sidebar"
               >
@@ -107,7 +107,7 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
               </button>
             )}
             
-            <div className="w-8 h-8 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm overflow-hidden">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm overflow-hidden flex-shrink-0">
               {process.env.NEXT_PUBLIC_PLATFORM_LOGO_URL ? (
                 <img 
                   src={process.env.NEXT_PUBLIC_PLATFORM_LOGO_URL} 
@@ -118,20 +118,20 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
                 <span className="text-lg font-bold text-black ting-text">t</span>
               )}
             </div>
-            <div className="ml-3">
-              <h1 className="text-lg font-bold brand-heading text-gray-900 dark:text-white">
+            <div className="ml-2 sm:ml-3 min-w-0 flex-1">
+              <h1 className="text-base sm:text-lg font-bold brand-heading text-gray-900 dark:text-white truncate">
                 <span className="ting-text">ting</span> {process.env.NEXT_PUBLIC_PLATFORM_NAME || 'TCIS'}
               </h1>
             </div>
           </div>
 
           {/* Right side - Actions - positioned to the right on desktop */}
-          <div className="flex items-center space-x-2 sm:space-x-4 lg:ml-auto">
+          <div className="flex items-center space-x-1 sm:space-x-2 lg:ml-auto">
             {/* Notifications */}
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="relative p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+                className="relative p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 min-h-[44px] min-w-[44px] touch-target"
                 aria-label="Notifications"
               >
                 <BellIcon className="h-5 w-5" />
@@ -144,15 +144,15 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
 
               {/* Notifications dropdown */}
               {notificationsOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50">
-                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[90vw] bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50">
+                  <div className="px-3 sm:px-4 py-3 border-b border-gray-200 dark:border-gray-800">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                         Notifications
                       </h3>
                       <button
                         onClick={() => setNotificationsOpen(false)}
-                        className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 min-h-[32px] min-w-[32px] touch-target"
                       >
                         <XMarkIcon className="h-4 w-4" />
                       </button>
@@ -161,7 +161,7 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
                   
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                      <div className="px-3 sm:px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                         No notifications
                       </div>
                     ) : (
@@ -169,7 +169,7 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
                         <div
                           key={notification.id}
                           className={cn(
-                            'px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200 cursor-pointer',
+                            'px-3 sm:px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-200 cursor-pointer',
                             !notification.read && 'bg-blue-50 dark:bg-blue-900/20'
                           )}
                         >
@@ -193,8 +193,8 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
                   </div>
                   
                   {notifications.length > 0 && (
-                    <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800">
-                      <button className="w-full text-sm text-center text-[#ffe600] hover:text-[#ffd700] font-medium">
+                    <div className="px-3 sm:px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+                      <button className="w-full text-sm text-center text-[#ffe600] hover:text-[#ffd700] font-medium py-2">
                         View all notifications
                       </button>
                     </div>
@@ -210,31 +210,31 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center space-x-2 p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+                className="flex items-center space-x-2 p-2 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 min-h-[44px] touch-target"
                 aria-label="User menu"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
                   <span className="text-sm font-bold text-black">
                     {(platformUser?.full_name || 'U').charAt(0).toUpperCase()}
                   </span>
                 </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <div className="hidden sm:block text-left min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {platformUser?.full_name || 'User'}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
                     {platformUser?.platform_role?.replace('_', ' ') || 'user'}
                   </p>
                 </div>
-                <ChevronDownIcon className="hidden sm:block h-4 w-4 text-gray-400" />
+                <ChevronDownIcon className="hidden sm:block h-4 w-4 text-gray-400 flex-shrink-0" />
               </button>
 
               {/* Profile dropdown */}
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50">
-                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+                <div className="absolute right-0 mt-2 w-64 max-w-[90vw] bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 py-2 z-50">
+                  <div className="px-3 sm:px-4 py-3 border-b border-gray-200 dark:border-gray-800">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm">
+                      <div className="w-10 h-10 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
                         <span className="text-sm font-bold text-black">
                           {(platformUser?.full_name || 'U').charAt(0).toUpperCase()}
                         </span>
@@ -251,11 +251,11 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
                   </div>
                   
                   <div className="py-1">
-                    <button className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200">
+                    <button className="w-full flex items-center px-3 sm:px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 min-h-[44px] touch-target">
                       <UserCircleIcon className="mr-3 h-4 w-4" />
                       Profile
                     </button>
-                    <button className="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200">
+                    <button className="w-full flex items-center px-3 sm:px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 min-h-[44px] touch-target">
                       <Cog6ToothIcon className="mr-3 h-4 w-4" />
                       Settings
                     </button>
@@ -264,7 +264,7 @@ export function TopNavigation({ className, onSidebarToggle }: TopNavigationProps
                   <div className="border-t border-gray-200 dark:border-gray-800 py-1">
                     <button
                       onClick={signOut}
-                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200"
+                      className="w-full flex items-center px-3 sm:px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200 min-h-[44px] touch-target"
                     >
                       <ArrowRightOnRectangleIcon className="mr-3 h-4 w-4" />
                       Sign out

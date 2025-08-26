@@ -12,13 +12,11 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   ChevronLeftIcon,
+  ChevronDownIcon,
   PaperAirplaneIcon,
   StopIcon,
-  FunnelIcon,
   CalendarIcon,
   UserGroupIcon,
-  AdjustmentsHorizontalIcon,
-  ExclamationTriangleIcon,
   SparklesIcon,
   DocumentTextIcon,
   ClockIcon,
@@ -33,7 +31,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
 import { QueryRequest, RoomType } from '@/types/api';
-// REMOVED: ReactMarkdown imports - replaced with custom progressive formatting
 import { createClient } from '@supabase/supabase-js';
 
 interface Conversation {
@@ -53,8 +50,8 @@ interface Message {
   content: string;
   timestamp: string;
   citations?: Citation[];
-      evaluation?: EvaluationResult;
-    status?: 'sending' | 'streaming' | 'complete' | 'error';
+  evaluation?: EvaluationResult;
+  status?: 'sending' | 'streaming' | 'complete' | 'error';
 }
 
 interface Citation {
@@ -83,15 +80,7 @@ interface EvaluationResult {
   result_json?: any;
 }
 
-interface ChatFilters {
-  types: ('internal' | 'external' | 'both')[];
-  room_ids: string[];
-  date_from: string;
-  date_to: string;
-  participants: string[];
-  evaluation_mode: boolean;
-  subject_user: string;
-}
+
 
 interface Client {
   id: string;
@@ -129,10 +118,6 @@ export default function ChatConversationsPage() {
   const { platformUser, supabase, lazyAuthenticate } = useAuth();
   const clientId = params.clientId as string;
   
-  // REMOVED: Duplicate function - moved to global scope for MessageBubble access
-  
-  // REMOVED: Old CSS injection - no longer needed with new approach
-  
   const [client, setClient] = useState<Client | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -145,8 +130,12 @@ export default function ChatConversationsPage() {
   const [isMobileConversationView, setIsMobileConversationView] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [hasInitializedFromUrl, setHasInitializedFromUrl] = useState(false);
-  
-  // REMOVED: Old markdown refresh mechanism - replaced with stable content-based keys
+  const [showClientDetails, setShowClientDetails] = useState(false);
+  const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
+  const [showCitationModal, setShowCitationModal] = useState(false);
+  // Search state
+  const [searchResults, setSearchResults] = useState<Conversation[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   
   // IMMEDIATE URL parameter processing - runs before fetchData
   useEffect(() => {
@@ -167,31 +156,17 @@ export default function ChatConversationsPage() {
     }
   }, [searchParams, hasInitializedFromUrl, conversations]);
   
-  const [filters, setFilters] = useState<ChatFilters>({
-    types: ['both'],
-    room_ids: [],
-    date_from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    date_to: new Date().toISOString(),
-    participants: [],
-    evaluation_mode: false,
-    subject_user: '',
-  });
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  // REMOVED: Complex content hash logic - not needed for simple approach
-
-  // REMOVED: Old markdown refresh cleanup - no longer needed
-
   // Fetch real data from database
   useEffect(() => {
-    // FIXED: Prevent multiple simultaneous fetches
     let isMounted = true;
     let isFetching = false;
     
     const fetchData = async () => {
-      // Prevent multiple simultaneous fetches
       if (isFetching) return;
       isFetching = true;
       
@@ -284,8 +259,6 @@ export default function ChatConversationsPage() {
         }
         
       } catch (error: any) {
-        console.error('Error fetching conversations:', error);
-        
         if (!isMounted) return;
         
         if (error.code === '42703') {
@@ -312,7 +285,7 @@ export default function ChatConversationsPage() {
     return () => {
       isMounted = false;
     };
-  }, [clientId, supabase, router]); // FIXED: Removed searchParams to prevent infinite loops
+  }, [clientId, supabase, router]);
 
   // Load messages for selected conversation from database
   useEffect(() => {
@@ -322,7 +295,6 @@ export default function ChatConversationsPage() {
         return;
       }
 
-      // FIXED: Reset streaming state when switching conversations
       setIsStreaming(false);
 
       try {
@@ -330,7 +302,6 @@ export default function ChatConversationsPage() {
         if (!session) {
           throw new Error('No authenticated session');
         }
-
 
         const { data: queriesData, error: queriesError } = await supabase
           .from('queries')
@@ -383,11 +354,9 @@ export default function ChatConversationsPage() {
           }
         });
 
-
         setMessages(transformedMessages);
         
       } catch (error: any) {
-        console.error('Error loading messages:', error);
         toast.error('Failed to load conversation messages');
         setMessages([]);
       }
@@ -435,7 +404,6 @@ export default function ChatConversationsPage() {
     return () => messagesContainer.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // FIXED: Proper tab switching handling that doesn't interfere with chat functionality
   useEffect(() => {
     const handleVisibilityChange = () => {
       // Only handle conversation selection, don't interfere with chat state
@@ -444,13 +412,10 @@ export default function ChatConversationsPage() {
         setHasInitializedFromUrl(true);
       }
       
-      // FIXED: Reset stuck streaming state when tab becomes visible
+      // Reset stuck streaming state when tab becomes visible
       if (!document.hidden && isStreaming) {
-        console.log('🔄 Tab became visible, checking for stuck streaming state...');
-        // Give a small delay to see if streaming is actually working
         setTimeout(() => {
           if (isStreaming) {
-            console.log('🔄 Detected stuck streaming state, resetting...');
             setIsStreaming(false);
             // Reset any streaming messages to error state
             setMessages(prev => prev.map(msg => 
@@ -482,11 +447,84 @@ export default function ChatConversationsPage() {
     };
   }, [conversations, selectedConversation, hasInitializedFromUrl, isStreaming]);
 
+  // Listen for citation modal events
+  useEffect(() => {
+    const handleShowCitationModal = (event: CustomEvent) => {
+      setSelectedCitation(event.detail);
+      setShowCitationModal(true);
+    };
 
-  const filteredConversations = conversations.filter(conv =>
+    window.addEventListener('showCitationModal', handleShowCitationModal as EventListener);
+    
+    return () => {
+      window.removeEventListener('showCitationModal', handleShowCitationModal as EventListener);
+    };
+  }, []);
+
+  // Prefer server-assisted search results when present; fallback to client-side filter
+  const filteredConversations = (searchResults ?? conversations).filter(conv =>
     conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (conv.preview && conv.preview.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  // Debounced server-assisted search across conversation titles and recent queries
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (term.length < 2) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        // 1) Title search on conversations (current client)
+        const { data: titleMatches, error: titleErr } = await supabase
+          .from('conversations')
+          .select(`id, title, client_id, created_at, updated_at, queries ( id, query_text )`)
+          .eq('client_id', clientId)
+          .ilike('title', `%${term}%`)
+          .order('updated_at', { ascending: false });
+        if (titleErr) throw titleErr;
+
+        // 2) Query text search limited to this client's loaded conversations
+        const convIds = conversations.map(c => c.id);
+        let queryMatchesIds: string[] = [];
+        if (convIds.length > 0) {
+          const { data: queryMatches, error: queryErr } = await supabase
+            .from('queries')
+            .select('conversation_id, query_text, question')
+            .in('conversation_id', convIds)
+            .or(`query_text.ilike.%${term}%,question.ilike.%${term}%`);
+          if (!queryErr && queryMatches) {
+            queryMatchesIds = Array.from(new Set(queryMatches.map(q => String(q.conversation_id))));
+          }
+        }
+
+        // Merge IDs from both sources
+        const idsFromTitle = new Set((titleMatches || []).map((c: any) => String(c.id)));
+        for (const id of queryMatchesIds) idsFromTitle.add(id);
+
+        // Produce result list from existing conversations to keep our card display consistent
+        const resultList: Conversation[] = conversations
+          .filter(c => idsFromTitle.has(String(c.id)))
+          .sort((a, b) => (a.last_activity < b.last_activity ? 1 : -1));
+
+        if (!cancelled) setSearchResults(resultList);
+      } catch {
+        if (!cancelled) setSearchResults(null);
+      } finally {
+        if (!cancelled) setIsSearching(false);
+      }
+    }, 300); // debounce
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery, clientId, supabase, conversations]);
 
   const createNewConversation = async () => {
     setIsCreatingConversation(true);
@@ -519,8 +557,6 @@ export default function ChatConversationsPage() {
       toast.success('New conversation created!', { id: 'create-conversation' });
       
     } catch (error: any) {
-      console.error('Error creating conversation:', error);
-      
       toast.error('Failed to create conversation', { id: 'create-conversation' });
       
       if (error.error_code === 'E_UNAUTHORIZED') {
@@ -539,21 +575,8 @@ export default function ChatConversationsPage() {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || isStreaming) {
-      console.log('🚫 sendMessage early return:', { 
-        noMessage: !newMessage.trim(), 
-        noConversation: !selectedConversation, 
-        isStreaming 
-      });
       return;
     }
-
-    // IMMEDIATE USER FEEDBACK - No blocking session validation
-    // User sees "ATOM is thinking..." instantly while auth happens in background
-
-    // REMOVED: Proactive session validation that was blocking the UI
-    // Session validation will happen automatically in the API call via the SSE stream
-    // This provides immediate user feedback ("ATOM is thinking...") while auth happens in background
-    console.log('🚀 Proceeding with message - session validation will happen in API call');
 
     // Create user message
     const userMessage: Message = {
@@ -566,8 +589,9 @@ export default function ChatConversationsPage() {
     };
 
     // Create assistant message placeholder with "ATOM is thinking..."
+    const assistantMessageId = `msg_${Date.now() + 1}`;
     const assistantMessage: Message = {
-      id: `msg_${Date.now() + 1}`,
+      id: assistantMessageId,
       conversation_id: selectedConversation,
       role: 'assistant',
       content: 'ATOM is thinking...',
@@ -578,23 +602,19 @@ export default function ChatConversationsPage() {
     // Add messages to state
     setMessages(prev => [...prev, userMessage, assistantMessage]);
     const currentMessage = newMessage;
-            setNewMessage(''); // FIXED: Clear input after sending
-        setIsStreaming(true);
+    setNewMessage(''); // Clear input after sending
+    setIsStreaming(true);
 
-    // FIXED: Add timeout to prevent stuck streaming
     let streamingTimeout: NodeJS.Timeout | undefined;
     
     try {
-      // FIXED: Ensure we're not in a stuck state
       let streamingContent = '';
       
-      // FIXED: Add timeout to prevent stuck streaming
       streamingTimeout = setTimeout(() => {
         if (isStreaming) {
-          console.log('⏰ Streaming timeout reached, resetting stuck state...');
           setIsStreaming(false);
           setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
+            msg.id === assistantMessageId 
               ? { ...msg, status: 'error', content: 'Request timed out. Please try again.' }
               : msg
           ));
@@ -607,15 +627,7 @@ export default function ChatConversationsPage() {
         client_id: parseInt(clientId),
         conversation_id: parseInt(selectedConversation!),
         question: currentMessage,
-        filters: {
-          types: filters.types.includes('both') ? ['internal', 'external'] as RoomType[] : filters.types as RoomType[],
-          room_ids: filters.room_ids.length > 0 ? filters.room_ids.map(id => parseInt(id)) : undefined,
-          date_from: filters.date_from,
-          date_to: filters.date_to,
-          participants: filters.participants.length > 0 ? filters.participants : undefined,
-        },
-        evaluation_mode: filters.evaluation_mode,
-        subject_user: filters.evaluation_mode ? filters.subject_user : undefined,
+
       };
 
       let citations: Citation[] = [];
@@ -632,37 +644,78 @@ export default function ChatConversationsPage() {
           // FIXED: Add space after each token to compensate for SSE whitespace stripping
           const tokenWithSpace = token + ' ';
           streamingContent += tokenWithSpace;
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, content: streamingContent, status: 'streaming', citations: msg.citations, evaluation: msg.evaluation }
-              : msg
-          ));
           
-          // FIXED: Don't refresh during streaming to allow text selection
+          // FIXED: Force React to re-render with new object reference
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const messageIndex = newMessages.findIndex(msg => msg.id === assistantMessageId);
+            if (messageIndex !== -1) {
+              newMessages[messageIndex] = {
+                ...newMessages[messageIndex],
+                content: streamingContent,
+                status: 'streaming' as const,
+                citations: [...citations], // New array reference
+                evaluation: evaluation
+              };
+            }
+            return newMessages;
+          });
         },
         onCitations: (citationData: any[]) => {
-          citations = citationData;
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, citations, status: 'streaming' as const }
-              : msg
-          ));
+          // Ensure citations are properly formatted
+          citations = citationData.map((citation: any) => ({
+            id: citation.id || `citation-${Date.now()}-${Math.random()}`,
+            room_name: citation.room_name || citation.roomName || 'Unknown Room',
+            time_span: citation.time_span || citation.timeSpan || 'Unknown Time',
+            snippet: citation.snippet || citation.content || 'No content available',
+            chunk_id: citation.chunk_id || citation.chunkId || 'unknown'
+          }));
+          
+          // FIXED: Force React to re-render with new object reference
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const messageIndex = newMessages.findIndex(msg => msg.id === assistantMessageId);
+            if (messageIndex !== -1) {
+              newMessages[messageIndex] = {
+                ...newMessages[messageIndex],
+                citations: [...citations], // New array reference forces re-render
+                status: 'streaming' as const
+              };
+            }
+            return newMessages;
+          });
         },
         onEvaluationPayload: (evaluationData: any) => {
           evaluation = evaluationData;
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, evaluation }
-              : msg
-          ));
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const messageIndex = newMessages.findIndex(msg => msg.id === assistantMessageId);
+            if (messageIndex !== -1) {
+              newMessages[messageIndex] = {
+                ...newMessages[messageIndex],
+                evaluation: evaluation
+              };
+            }
+            return newMessages;
+          });
         },
         onDone: (doneData: any) => {
           if (streamingTimeout) clearTimeout(streamingTimeout);
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, status: 'complete', citations: msg.citations, evaluation: msg.evaluation }
-              : msg
-          ));
+          
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const messageIndex = newMessages.findIndex(msg => msg.id === assistantMessageId);
+            if (messageIndex !== -1) {
+              newMessages[messageIndex] = {
+                ...newMessages[messageIndex],
+                content: streamingContent,
+                status: 'complete' as const,
+                citations: [...citations], // New array reference
+                evaluation: evaluation
+              };
+            }
+            return newMessages;
+          });
           
           setConversations(prev => prev.map(conv =>
             conv.id === selectedConversation
@@ -671,17 +724,25 @@ export default function ChatConversationsPage() {
           ));
           
           setIsStreaming(false);
-          
-          // FIXED: Markdown will refresh automatically when content changes
         },
         onError: (error: any) => {
           if (streamingTimeout) clearTimeout(streamingTimeout);
-          console.error('❌ Streaming error:', error);
-          setMessages(prev => prev.map(msg => 
-            msg.id === assistantMessage.id 
-              ? { ...msg, content: 'Sorry, I encountered an error processing your request.', status: 'error', citations: msg.citations, evaluation: msg.evaluation }
-              : msg
-          ));
+          
+          setMessages(prev => {
+            const newMessages = [...prev];
+            const messageIndex = newMessages.findIndex(msg => msg.id === assistantMessageId);
+            if (messageIndex !== -1) {
+              newMessages[messageIndex] = {
+                ...newMessages[messageIndex],
+                content: 'Sorry, I encountered an error processing your request.',
+                status: 'error' as const,
+                citations: [...citations], // New array reference
+                evaluation: evaluation
+              };
+            }
+            return newMessages;
+          });
+          
           toast.error('Failed to process query');
           setIsStreaming(false);
         },
@@ -691,9 +752,9 @@ export default function ChatConversationsPage() {
       
     } catch (error: any) {
       if (streamingTimeout) clearTimeout(streamingTimeout);
-      console.error('Error sending message:', error);
+      
       setMessages(prev => prev.map(msg => 
-        msg.id === assistantMessage.id 
+        msg.id === assistantMessageId 
           ? { ...msg, content: 'Sorry, I encountered an error processing your request.', status: 'error' }
           : msg
       ));
@@ -711,10 +772,10 @@ export default function ChatConversationsPage() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   const handleClientChange = (newClientId: string) => {
@@ -725,24 +786,24 @@ export default function ChatConversationsPage() {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 lg:px-6 py-3 lg:py-4">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-3 sm:px-4 lg:px-6 py-3 lg:py-4">
         <div className="flex items-center justify-between">
           {/* Left side - Mobile Menu + Brand */}
-          <div className="flex items-center space-x-3 lg:space-x-8">
+          <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-8">
             {/* Mobile Menu Toggle - Left Side */}
             <button
               onClick={() => setIsMobileConversationView(!isMobileConversationView)}
-              className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
+              className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 min-h-[44px] min-w-[44px] touch-target"
               title="Toggle menu"
             >
               <Bars3Icon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </button>
             
             <div className="flex items-center space-x-2 lg:space-x-3">
-              <div className="w-7 h-7 lg:w-8 lg:h-8 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-lg flex items-center justify-center">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 bg-gradient-to-br from-[#ffe600] to-[#ffd700] rounded-lg flex items-center justify-center">
                 <span className="text-gray-900 font-bold text-xs lg:text-sm">T</span>
               </div>
-              <span className="text-base lg:text-lg font-semibold text-gray-900 dark:text-white">TingAI</span>
+              <span className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-white">TingAI</span>
             </div>
             
             <div className="hidden md:block w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
@@ -759,7 +820,7 @@ export default function ChatConversationsPage() {
           </div>
           
           {/* Right side - Actions */}
-          <div className="flex items-center space-x-2 lg:space-x-3">
+          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3">
             <Button
               variant="outline"
               size="sm"
@@ -782,7 +843,7 @@ export default function ChatConversationsPage() {
             {/* Theme Toggle */}
             <button
               onClick={() => document.documentElement.classList.toggle('dark')}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 min-h-[44px] min-w-[44px] touch-target"
               title="Toggle theme"
             >
               <SunIcon className="h-4 w-4 lg:h-5 lg:w-5 text-gray-600 dark:text-gray-400 hidden dark:block" />
@@ -802,20 +863,20 @@ export default function ChatConversationsPage() {
 
       {/* Left Panel - Conversations List */}
       <div className={cn(
-        "fixed lg:static inset-y-0 left-0 z-40 w-80 lg:w-80 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-800 mt-20 lg:mt-20 transform transition-transform duration-300 ease-in-out shadow-xl lg:shadow-none",
+        "fixed lg:static inset-y-0 left-0 z-40 w-80 lg:w-80 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-800 transform transition-transform duration-300 ease-in-out shadow-xl lg:shadow-none",
         isMobileConversationView ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex items-center justify-between mb-4">
+        <div className="px-6 py-6 border-b border-gray-200 dark:border-gray-800 pt-20 lg:pt-24 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
+          <div className="flex items-center justify-between mb-4 pt-2">
             <div className="flex items-center space-x-3">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
                 Conversations
               </h3>
               {/* Mobile Close Button */}
               <button
                 onClick={() => setIsMobileConversationView(false)}
-                className="lg:hidden p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
+                className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 min-h-[44px] min-w-[44px] touch-target"
                 title="Close sidebar"
               >
                 <XMarkIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
@@ -825,7 +886,7 @@ export default function ChatConversationsPage() {
               size="sm"
               onClick={createNewConversation}
               disabled={isCreatingConversation}
-              className="min-w-[80px]"
+              className="min-w-[90px] h-10 px-4 font-medium shadow-sm hover:shadow-md transition-all duration-200"
             >
               {isCreatingConversation ? (
                 <>
@@ -834,7 +895,7 @@ export default function ChatConversationsPage() {
                 </>
               ) : (
                 <>
-                  <PlusIcon className="h-4 w-4 mr-1" />
+                  <PlusIcon className="h-4 w-4 mr-2" />
                   New
                 </>
               )}
@@ -842,103 +903,120 @@ export default function ChatConversationsPage() {
           </div>
           
           {/* Mobile Client Selector and Navigation */}
-          <div className="md:hidden space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-            {/* Client Selector */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Client
-              </label>
-              <div className="w-full">
-                <ClientPicker
-                  selectedClientId={clientId}
-                  onClientSelect={handleClientChange}
-                  placeholder="Select a client..."
-                />
+          <div className="md:hidden space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            {/* Collapsible Client Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Client
+                </label>
+                <button
+                  onClick={() => setShowClientDetails(!showClientDetails)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
+                  title="Toggle client details"
+                >
+                  <ChevronDownIcon className={cn(
+                    "h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200",
+                    showClientDetails ? "rotate-180" : ""
+                  )} />
+                </button>
               </div>
-            </div>
-            
-            {/* Mobile Navigation Links */}
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  router.push(`/clients/${clientId}/rooms`);
-                  setIsMobileConversationView(false);
-                }}
-                className="flex-1"
-              >
-                <DocumentTextIcon className="h-4 w-4 mr-1" />
-                Manage Rooms
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  router.push('/dashboard');
-                  setIsMobileConversationView(false);
-                }}
-                className="flex-1"
-              >
-                <Cog6ToothIcon className="h-4 w-4 mr-1" />
-                Dashboard
-              </Button>
+              
+              {showClientDetails && (
+                <div className="space-y-4 pl-2">
+                  <div className="w-full">
+                    <ClientPicker
+                      selectedClientId={clientId}
+                      onClientSelect={handleClientChange}
+                      placeholder="Select a client..."
+                    />
+                  </div>
+                  
+                  {/* Mobile Navigation Links */}
+                  <div className="flex space-x-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        router.push(`/clients/${clientId}/rooms`);
+                        setIsMobileConversationView(false);
+                      }}
+                      className="flex-1 min-h-[44px] touch-target h-10"
+                    >
+                      <DocumentTextIcon className="h-4 w-4 mr-2" />
+                      Manage Rooms
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        router.push('/dashboard');
+                        setIsMobileConversationView(false);
+                      }}
+                      className="flex-1 min-h-[44px] touch-target h-10"
+                    >
+                      <Cog6ToothIcon className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           
           {/* Search */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <div className="relative pt-3">
+            <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#ffe600]/20 focus:border-[#ffe600]"
+              className="w-full pl-10 pr-4 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#ffe600]/20 focus:border-[#ffe600] min-h-[48px] touch-target shadow-sm hover:shadow-md transition-all duration-200"
             />
+            {isSearching && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <div className="h-4 w-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="p-4 space-y-3">
+            <div className="px-6 py-8 space-y-4">
               {[...Array(4)].map((_, i) => (
                 <ConversationSkeleton key={i} />
               ))}
             </div>
           ) : isCreatingConversation ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin h-8 w-8 border-2 border-[#ffe600] border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
+            <div className="px-6 py-12 text-center">
+              <div className="animate-spin h-10 w-10 border-3 border-[#ffe600] border-t-transparent rounded-full mx-auto mb-6"></div>
+              <p className="text-gray-600 dark:text-gray-300 text-base font-medium">
                 Creating new conversation...
               </p>
             </div>
           ) : filteredConversations.length === 0 ? (
-            <div className="p-8 text-center">
-              <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
+            <div className="px-6 py-12 text-center">
+              <ChatBubbleLeftRightIcon className="h-16 w-16 text-gray-300 mx-auto mb-6" />
+              <p className="text-gray-600 dark:text-gray-300 text-base font-medium mb-3">
                 {searchQuery ? 'No conversations found' : 'No conversations yet'}
               </p>
               {!searchQuery && (
-                <p className="text-gray-400 dark:text-gray-500 text-xs">
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
                   Start by creating your first conversation to analyze chat data
                 </p>
               )}
             </div>
           ) : (
-            <div className="p-2">
+            <div className="px-4 py-6 space-y-2">
               {filteredConversations.map((conversation) => (
                 <ConversationItem
                   key={conversation.id}
                   conversation={conversation}
                   isSelected={selectedConversation === conversation.id}
                   onClick={() => {
-                    console.log('🔄 Conversation switching:', {
-                      from: selectedConversation,
-                      to: conversation.id,
-                      conversationTitle: conversation.title
-                    });
                     setSelectedConversation(conversation.id);
                     setIsMobileConversationView(true);
                     router.push(`/chat/${clientId}/conversations?conversation=${conversation.id}`, { scroll: false });
@@ -952,67 +1030,53 @@ export default function ChatConversationsPage() {
 
       {/* Right Panel - Chat Interface */}
       <div className={cn(
-        "flex-1 flex flex-col bg-white dark:bg-gray-900 min-h-0 mt-20 lg:mt-20",
+        "flex-1 flex flex-col bg-white dark:bg-gray-900 min-h-0",
         !isMobileConversationView && !selectedConversation && "hidden lg:flex"
       )}>
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3 min-w-0 flex-1">
-                  <button
-                    onClick={() => setIsMobileConversationView(false)}
-                    className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 flex-shrink-0"
-                    title="Back to conversations"
-                  >
-                    <ChevronLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-white truncate">
-                      {conversations.find(c => c.id === selectedConversation)?.title}
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {messages.filter(m => m.role === 'user').length} questions asked
-                    </p>
+            <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 pt-20 lg:pt-24">
+              {/* Mobile: full width, Desktop: centered ChatGPT-style */}
+              <div className="w-full px-4 sm:px-5 md:px-6 lg:max-w-4xl lg:mx-auto lg:px-8 xl:max-w-5xl xl:px-12 2xl:max-w-6xl 2xl:px-16 py-3 sm:py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+                    <button
+                      onClick={() => setIsMobileConversationView(false)}
+                      className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 flex-shrink-0 min-h-[44px] min-w-[44px] touch-target"
+                      title="Back to conversations"
+                    >
+                      <ChevronLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 dark:text-white truncate">
+                        {conversations.find(c => c.id === selectedConversation)?.title}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                        {messages.filter(m => m.role === 'user').length} questions asked
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2 flex-shrink-0">
                   </div>
                 </div>
-                
-                <div className="flex items-center space-x-2 flex-shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="hidden sm:flex"
-                  >
-                    <AdjustmentsHorizontalIcon className="h-4 w-4 mr-1" />
-                    Filters
-                  </Button>
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="sm:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
-                    title="Toggle filters"
-                  >
-                    <FunnelIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                </div>
               </div>
-              
-              {/* Filters Panel */}
-              {showFilters && (
-                <FilterPanel filters={filters} setFilters={setFilters} />
-              )}
             </div>
 
             {/* Messages */}
-                          <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0 relative">
-                {messages.map((message) => (
-                                   <MessageBubble 
-                   key={message.id} 
-                   message={message}
-                 />
-                ))}
-                <div ref={messagesEndRef} />
+            <div className="flex-1 overflow-y-auto min-h-0 relative">
+              {/* Mobile: full width, Desktop: centered ChatGPT-style */}
+              <div className="w-full px-4 sm:px-5 md:px-6 lg:max-w-4xl lg:mx-auto lg:px-8 xl:max-w-5xl xl:px-12 2xl:max-w-6xl 2xl:px-16 overflow-x-hidden [word-break:break-word]">
+                <div className="space-y-4 sm:space-y-6 py-3 sm:py-4">
+                  {messages.map((message) => (
+                    <MessageBubble 
+                      key={message.id} 
+                      message={message}
+                    />
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
                 
                 {/* Scroll to bottom button - only show when user has scrolled up */}
                 {userHasScrolledUp && (
@@ -1028,48 +1092,50 @@ export default function ChatConversationsPage() {
                   </button>
                 )}
               </div>
+            </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-              <div className="flex items-end space-x-3">
-                <div className="flex-1 min-w-0">
-                  <textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={filters.evaluation_mode ? "Ask a question for evaluation..." : "Ask a question about your chat data..."}
-                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-[#ffe600]/20 focus:border-[#ffe600] resize-none"
-                    rows={2}
-                    disabled={isStreaming}
-                  />
-                  <div className="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center space-x-2">
-                      <span className="hidden sm:inline">Press Enter to send, Shift+Enter for new line</span>
-                      <span className="sm:hidden">Enter to send</span>
-                      {/* FIXED: Manual markdown refresh button for proper formatting */}
-                      
+            <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+              {/* Mobile: full width, Desktop: centered ChatGPT-style */}
+              <div className="w-full px-4 sm:px-5 md:px-6 lg:max-w-4xl lg:mx-auto lg:px-8 xl:max-w-5xl xl:px-12 2xl:max-w-6xl 2xl:px-16 py-3 sm:py-4">
+                <div className="flex items-end space-x-2 sm:space-x-3 w-full">
+                  <div className="flex-1 min-w-0 max-w-full">
+                    <textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Ask a question about your chat data..."
+                      className="w-full max-w-full px-3 sm:px-4 py-3 sm:py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-[#ffe600]/20 focus:border-[#ffe600] resize-none text-sm sm:text-base min-h-[44px] touch-target"
+                      rows={1}
+                      disabled={isStreaming}
+                    />
+                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center space-x-2">
+                        <span className="hidden sm:inline">Press Enter to send, Shift+Enter for new line</span>
+                        <span className="sm:hidden">Enter to send</span>
+                      </div>
+                      <span>{newMessage.length}/1000</span>
                     </div>
-                    <span>{newMessage.length}/1000</span>
                   </div>
-                </div>
-                
-                {isStreaming ? (
-                  <Button variant="outline" onClick={stopStreaming} className="flex-shrink-0">
-                    <StopIcon className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Stop</span>
-                  </Button>
-                ) : (
-                                                                              <Button 
-                        onClick={() => {
-                          sendMessage();
-                        }}
-                        disabled={!newMessage.trim() || newMessage.length > 1000}
-                      className="flex-shrink-0"
+                  
+                  {isStreaming ? (
+                    <Button variant="outline" onClick={stopStreaming} className="flex-shrink-0 min-w-[60px]">
+                      <StopIcon className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Stop</span>
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={() => {
+                        sendMessage();
+                      }}
+                      disabled={!newMessage.trim() || newMessage.length > 1000}
+                      className="flex-shrink-0 min-w-[60px]"
                     >
-                    <PaperAirplaneIcon className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Send</span>
-                  </Button>
-                )}
+                      <PaperAirplaneIcon className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Send</span>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </>
@@ -1108,18 +1174,97 @@ export default function ChatConversationsPage() {
           },
         }}
       />
+
+      {/* Citation Modal */}
+      {showCitationModal && selectedCitation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                <DocumentTextIcon className="h-5 w-5 mr-3 text-blue-500" />
+                Source Content
+              </h3>
+              <button
+                onClick={() => setShowCitationModal(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200 min-h-[44px] min-w-[44px] touch-target"
+                title="Close"
+              >
+                <XMarkIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="space-y-6">
+                {/* Source Content */}
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                    Content
+                  </h4>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {selectedCitation.snippet || 'No content available'}
+                  </p>
+                </div>
+                
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Room
+                    </h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedCitation.room_name || 'Unknown'}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Time Period
+                    </h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {selectedCitation.time_span || 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Additional Info */}
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Source ID
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                    {selectedCitation.chunk_id || 'Unknown'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => setShowCitationModal(false)}
+                className="px-6 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors duration-200 min-h-[44px] touch-target"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// PROPER REACT MARKDOWN RENDERER: Preserves text selection during and after streaming
+// ADVANCED MARKDOWN RENDERER: Real-time streaming with rich formatting like Claude
 const MarkdownRenderer: React.FC<{ content: string; isStreaming?: boolean }> = ({ content, isStreaming = false }) => {
-  // CRITICAL: Render inline formatting as React elements for text selection
-  const renderInlineFormatting = (text: string) => {
+  
+  // Define renderInlineFormatting function first
+  const renderInlineFormatting = useCallback((text: string) => {
     if (!text) return null;
     
-    // Split text by markdown patterns and render each part as React elements
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+    // Split by all inline patterns
+    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\[.*?\]\(.*?\)|~~.*?~~)/g);
     
     return parts.map((part, partIndex) => {
       // Bold text (**text**)
@@ -1131,68 +1276,231 @@ const MarkdownRenderer: React.FC<{ content: string; isStreaming?: boolean }> = (
       // Italic text (*text*)
       const italicMatch = part.match(/^\*(.*?)\*$/);
       if (italicMatch) {
-        return <em key={partIndex} className="italic text-gray-600 dark:text-gray-400">{italicMatch[1]}</em>;
+        return <em key={partIndex} className="italic">{italicMatch[1]}</em>;
+      }
+      
+      // Strikethrough (~~text~~)
+      const strikeMatch = part.match(/^~~(.*?)~~$/);
+      if (strikeMatch) {
+        return <del key={partIndex} className="line-through opacity-75">{strikeMatch[1]}</del>;
       }
       
       // Inline code (`code`)
       const codeMatch = part.match(/^`(.*?)`$/);
       if (codeMatch) {
-        return <code key={partIndex} className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-gray-800 dark:text-gray-200">{codeMatch[1]}</code>;
+        return (
+          <code key={partIndex} className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono text-pink-600 dark:text-pink-400 border border-gray-200 dark:border-gray-700">
+            {codeMatch[1]}
+          </code>
+        );
+      }
+      
+      // Links ([text](url))
+      const linkMatch = part.match(/^\[(.*?)\]\((.*?)\)$/);
+      if (linkMatch) {
+        return (
+          <a
+            key={partIndex}
+            href={linkMatch[2]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          >
+            {linkMatch[1]}
+          </a>
+        );
       }
       
       // Regular text
       return <span key={partIndex}>{part}</span>;
     });
-  };
-
-  const renderContent = useMemo(() => {
+  }, []);
+  
+  const renderRichMarkdown = useMemo(() => {
     if (!content) return [];
     
-    // Split content into lines for proper rendering
     const lines = content.split('\n');
+    const elements: React.ReactNode[] = [];
+    let currentParagraph: string[] = [];
+    let inCodeBlock = false;
+    let codeBlockContent: string[] = [];
+    let codeBlockLang = '';
+    let inList = false;
+    let listItems: string[] = [];
+    let listType = '';
     
-    return lines.map((line, lineIndex) => {
-      // Handle numbered lists (1. 2. 3.)
-      const numberedListMatch = line.match(/^(\d+\.\s+)(.+)$/);
-      if (numberedListMatch) {
-        return (
-          <div key={lineIndex} className="flex items-start mb-2">
-            <span className="font-mono text-gray-500 mr-2 flex-shrink-0">{numberedListMatch[1]}</span>
-            <span className="flex-1">{renderInlineFormatting(numberedListMatch[2])}</span>
+    const flushParagraph = () => {
+      if (currentParagraph.length > 0) {
+        const paragraphText = currentParagraph.join(' ').trim();
+        if (paragraphText) {
+          elements.push(
+            <p key={elements.length} className="mb-4 leading-relaxed text-gray-900 dark:text-gray-100">
+              {renderInlineFormatting(paragraphText)}
+            </p>
+          );
+        }
+        currentParagraph = [];
+      }
+    };
+    
+    const flushList = () => {
+      if (listItems.length > 0) {
+        const ListTag = listType === 'ordered' ? 'ol' : 'ul';
+        elements.push(
+          <ListTag key={elements.length} className={cn(
+            "mb-4 space-y-2 ml-4",
+            listType === 'ordered' ? "list-decimal" : "list-disc"
+          )}>
+            {listItems.map((item, idx) => (
+              <li key={idx} className="leading-relaxed text-gray-900 dark:text-gray-100 pl-1">
+                {renderInlineFormatting(item)}
+              </li>
+            ))}
+          </ListTag>
+        );
+        listItems = [];
+        inList = false;
+      }
+    };
+    
+    const flushCodeBlock = () => {
+      if (codeBlockContent.length > 0) {
+        elements.push(
+          <div key={elements.length} className="mb-4">
+            <pre className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto border border-gray-200 dark:border-gray-700">
+              <code className="text-sm text-gray-800 dark:text-gray-200 font-mono leading-relaxed">
+                {codeBlockContent.join('\n')}
+              </code>
+            </pre>
           </div>
         );
+        codeBlockContent = [];
+        inCodeBlock = false;
+      }
+    };
+    
+    lines.forEach((line, lineIndex) => {
+      // Handle code blocks
+      const codeBlockMatch = line.match(/^```(\w*)?/);
+      if (codeBlockMatch) {
+        if (!inCodeBlock) {
+          flushParagraph();
+          flushList();
+          inCodeBlock = true;
+          codeBlockLang = codeBlockMatch[1] || '';
+        } else {
+          flushCodeBlock();
+        }
+        return;
       }
       
-      // Handle bullet points (- or *)
-      const bulletMatch = line.match(/^([-*]\s+)(.+)$/);
-      if (bulletMatch) {
-        return (
-          <div key={lineIndex} className="flex items-start mb-2">
-            <span className="text-gray-500 mr-2 flex-shrink-0">•</span>
-            <span className="flex-1">{renderInlineFormatting(bulletMatch[2])}</span>
-          </div>
+      if (inCodeBlock) {
+        codeBlockContent.push(line);
+        return;
+      }
+      
+      // Handle headers
+      const headerMatch = line.match(/^(#{1,6})\s+(.+)/);
+      if (headerMatch) {
+        flushParagraph();
+        flushList();
+        const level = headerMatch[1].length;
+        const HeaderTag = `h${level}` as keyof JSX.IntrinsicElements;
+        const headerStyles = {
+          1: "text-2xl font-bold mb-4 mt-6 text-gray-900 dark:text-white",
+          2: "text-xl font-bold mb-3 mt-5 text-gray-900 dark:text-white", 
+          3: "text-lg font-semibold mb-3 mt-4 text-gray-900 dark:text-white",
+          4: "text-base font-semibold mb-2 mt-3 text-gray-900 dark:text-white",
+          5: "text-sm font-semibold mb-2 mt-3 text-gray-900 dark:text-white",
+          6: "text-sm font-medium mb-2 mt-2 text-gray-700 dark:text-gray-300"
+        };
+        
+        elements.push(
+          <HeaderTag key={elements.length} className={headerStyles[level as keyof typeof headerStyles]}>
+            {renderInlineFormatting(headerMatch[2])}
+          </HeaderTag>
         );
+        return;
+      }
+      
+      // Handle numbered lists (1. 2. 3.)
+      const numberedMatch = line.match(/^(\d+)\.\s+(.+)/);
+      if (numberedMatch) {
+        flushParagraph();
+        if (!inList || listType !== 'ordered') {
+          flushList();
+          inList = true;
+          listType = 'ordered';
+        }
+        listItems.push(numberedMatch[2]);
+        return;
+      }
+      
+      // Handle bullet lists (- or *)
+      const bulletMatch = line.match(/^[-*]\s+(.+)/);
+      if (bulletMatch) {
+        flushParagraph();
+        if (!inList || listType !== 'unordered') {
+          flushList();
+          inList = true;
+          listType = 'unordered';
+        }
+        listItems.push(bulletMatch[1]);
+        return;
+      }
+      
+      // Handle blockquotes
+      const blockquoteMatch = line.match(/^>\s*(.+)/);
+      if (blockquoteMatch) {
+        flushParagraph();
+        flushList();
+        elements.push(
+          <blockquote key={elements.length} className="border-l-4 border-blue-400 pl-4 py-2 mb-4 bg-blue-50 dark:bg-blue-900/20 italic text-gray-700 dark:text-gray-300">
+            {renderInlineFormatting(blockquoteMatch[1])}
+          </blockquote>
+        );
+        return;
+      }
+      
+      // Handle horizontal rules
+      if (line.match(/^(-{3,}|\*{3,}|_{3,})$/)) {
+        flushParagraph();
+        flushList();
+        elements.push(
+          <hr key={elements.length} className="my-6 border-gray-300 dark:border-gray-600" />
+        );
+        return;
       }
       
       // Handle empty lines
       if (line.trim() === '') {
-        return <div key={lineIndex} className="h-2" />;
+        flushParagraph();
+        flushList();
+        return;
       }
       
-      // Handle regular text with inline formatting
-      return (
-        <div key={lineIndex} className="mb-1">
-          {renderInlineFormatting(line)}
-        </div>
-      );
+      // Regular paragraph text
+      if (inList) {
+        flushList();
+      }
+      currentParagraph.push(line);
     });
+    
+    // Flush remaining content
+    flushParagraph();
+    flushList();
+    flushCodeBlock();
+    
+    return elements;
   }, [content]);
   
+
+
   return (
-    <div className="markdown-content">
-      {renderContent}
+    <div className="markdown-content prose prose-sm max-w-none dark:prose-invert">
+      {renderRichMarkdown}
       {isStreaming && (
-        <span className="inline-block w-0.5 h-4 bg-current opacity-75 animate-pulse ml-1" />
+        <span className="inline-block w-0.5 h-5 bg-blue-500 opacity-75 animate-pulse ml-0.5 align-middle" />
       )}
     </div>
   );
@@ -1210,26 +1518,26 @@ function ConversationItem({ conversation, isSelected, onClick }: ConversationIte
     <button
       onClick={onClick}
       className={cn(
-        "w-full p-3 rounded-xl text-left transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800",
-        isSelected && "bg-[#ffe600]/10 border border-[#ffe600]/20"
+        "w-full p-4 rounded-xl text-left transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800 min-h-[56px] touch-target border border-transparent hover:border-gray-200 dark:hover:border-gray-700",
+        isSelected && "bg-[#ffe600]/10 border-[#ffe600]/30 shadow-sm"
       )}
     >
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium text-gray-900 dark:text-white text-sm truncate">
+      <div className="flex items-start justify-between mb-3">
+        <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate flex-1 mr-3">
           {conversation.title}
         </h4>
-        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
+        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 font-medium">
           {conversation.last_activity}
         </span>
       </div>
       {conversation.preview && (
-        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3 leading-relaxed">
           {conversation.preview}
         </p>
       )}
       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-        <span>{conversation.message_count} messages</span>
-        <span>{new Date(conversation.created_at).toLocaleDateString()}</span>
+        <span className="font-medium">{conversation.message_count} messages</span>
+        <span className="font-medium">{new Date(conversation.created_at).toLocaleDateString()}</span>
       </div>
     </button>
   );
@@ -1260,38 +1568,33 @@ function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
       <div 
         data-message-id={message.id}
         className={cn(
-          "max-w-[80%] rounded-2xl px-4 py-3",
+          "max-w-[88%] sm:max-w-[90%] md:max-w-[85%] lg:max-w-[80%] rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-sm sm:text-base whitespace-pre-wrap break-words overflow-hidden",
           isUser 
             ? "bg-[#ffe600] text-black" 
-            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+            : "bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-700"
         )}>
-        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+        
+        {/* Message Content */}
+        <div className="break-words overflow-hidden">
           {message.content === 'ATOM is thinking...' && message.status === 'streaming' ? (
             <div className="flex items-center space-x-2">
-              <span>ATOM is thinking</span>
+              <span className="text-gray-600 dark:text-gray-400">ATOM is thinking</span>
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-2 h-2 bg-current rounded-full animate-bounce opacity-70" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-current rounded-full animate-bounce opacity-70" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-current rounded-full animate-bounce opacity-70" style={{ animationDelay: '300ms' }}></div>
               </div>
             </div>
           ) : (
-            <>
-              <div className="prose prose-sm max-w-none dark:prose-invert markdown-content">
-                {/* SIMPLE STABLE APPROACH: No DOM manipulation, just stable content */}
-                                                  <div 
-                   key={message.id}
-                   className="whitespace-pre-wrap break-words"
-                 >
-                   <MarkdownRenderer content={message.content} isStreaming={message.status === 'streaming'} />
-                 </div>
-                             </div>
-                             
-            </>
+            <MarkdownRenderer 
+              key={`${message.id}-${message.content.length}`}
+              content={message.content} 
+              isStreaming={message.status === 'streaming'} 
+            />
           )}
         </div>
         
@@ -1308,7 +1611,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
             </div>
           </div>
         )}
-        
+
         {/* Evaluation Results */}
         {message.evaluation && (
           <div className="mt-4">
@@ -1316,10 +1619,10 @@ function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         )}
         
-        <div className="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
           <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
           {message.status === 'error' && (
-            <span className="text-red-500 dark:text-red-400">Failed to send</span>
+            <span className="text-red-500 dark:text-red-400 font-medium">Failed to send</span>
           )}
         </div>
       </div>
@@ -1332,28 +1635,13 @@ interface CitationChipProps {
 }
 
 function CitationChip({ citation }: CitationChipProps) {
-  const [showPreview, setShowPreview] = useState(false);
-  
-  // Close preview when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showPreview && !event.target) return;
-      const target = event.target as Element;
-      if (!target.closest('.citation-chip')) {
-        setShowPreview(false);
-      }
-    };
-
-    if (showPreview) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showPreview]);
-  
   return (
-    <div className="relative citation-chip">
+    <div className="citation-chip">
       <button
-        onClick={() => setShowPreview(!showPreview)}
+        onClick={() => {
+          // Dispatch custom event to open citation modal
+          window.dispatchEvent(new CustomEvent('showCitationModal', { detail: citation }));
+        }}
         className="inline-flex items-center px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 text-sm font-medium rounded-lg hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/50 dark:hover:to-indigo-900/50 transition-all duration-200 border border-blue-200 dark:border-blue-700/50 shadow-sm hover:shadow-md"
       >
         <DocumentTextIcon className="h-4 w-4 mr-2" />
@@ -1361,147 +1649,11 @@ function CitationChip({ citation }: CitationChipProps) {
         <span className="mx-2 text-blue-500">•</span>
         <span className="text-xs opacity-80">{citation.time_span || 'Unknown Time'}</span>
       </button>
-      
-      {showPreview && (
-        <div className="absolute top-full left-0 mt-3 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-20 max-w-md min-w-80 backdrop-blur-sm">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
-              <DocumentTextIcon className="h-4 w-4 mr-2 text-blue-500" />
-              Source Content
-            </h4>
-            <button
-              onClick={() => setShowPreview(false)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
-          </div>
-          
-          {/* Content */}
-          <div className="space-y-3">
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3">
-              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                {citation.snippet || 'No content available'}
-              </p>
-            </div>
-            
-            {/* Metadata */}
-            <div className="grid grid-cols-2 gap-3 text-xs text-gray-500 dark:text-gray-400">
-              <div>
-                <span className="font-medium">Room:</span>
-                <p className="truncate">{citation.room_name || 'Unknown'}</p>
-              </div>
-              <div>
-                <span className="font-medium">Time:</span>
-                <p className="truncate">{citation.time_span || 'Unknown'}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-interface FilterPanelProps {
-  filters: ChatFilters;
-  setFilters: (filters: ChatFilters) => void;
-}
 
-function FilterPanel({ filters, setFilters }: FilterPanelProps) {
-  return (
-    <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Type Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Chat Type
-          </label>
-          <select
-            value={filters.types[0]}
-            onChange={(e) => setFilters({ ...filters, types: [e.target.value as any] })}
-            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#ffe600]/20 focus:border-[#ffe600]"
-          >
-            <option value="both">Both Internal & External</option>
-            <option value="internal">Internal Only</option>
-            <option value="external">External Only</option>
-          </select>
-        </div>
-
-        {/* Date Range */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Date From
-          </label>
-          <input
-            type="date"
-            value={filters.date_from}
-            onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
-            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#ffe600]/20 focus:border-[#ffe600]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Date To
-          </label>
-          <input
-            type="date"
-            value={filters.date_to}
-            onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
-            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#ffe600]/20 focus:border-[#ffe600]"
-          />
-        </div>
-      </div>
-
-      {/* Evaluation Mode */}
-      <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center space-x-3">
-          <SparklesIcon className="h-5 w-5 text-[#ffe600]" />
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
-              Evaluation Mode
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Enable driver-based scoring and evidence analysis
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => setFilters({ ...filters, evaluation_mode: !filters.evaluation_mode })}
-          className={cn(
-            "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200",
-            filters.evaluation_mode ? "bg-[#ffe600]" : "bg-gray-200 dark:bg-gray-700"
-          )}
-        >
-          <span
-            className={cn(
-              "inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200",
-              filters.evaluation_mode ? "translate-x-6" : "translate-x-1"
-            )}
-          />
-        </button>
-      </div>
-
-      {/* Subject User (when evaluation mode is enabled) */}
-      {filters.evaluation_mode && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Subject User (Required for evaluation)
-          </label>
-          <input
-            type="text"
-            value={filters.subject_user}
-            onChange={(e) => setFilters({ ...filters, subject_user: e.target.value })}
-            placeholder="Enter user name or ID to evaluate"
-            className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#ffe600]/20 focus:border-[#ffe600]"
-          />
-        </div>
-      )}
-    </div>
-  );
-}
 
 function EmptyChatState({ onCreateConversation }: { onCreateConversation: () => void }) {
   return (

@@ -46,6 +46,20 @@ export default function ZohoCliqIntegrationPage() {
     redirect_uri: '',
   });
 
+  // Set default redirect URI on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !setupForm.redirect_uri) {
+      // Force production URL for now since you're testing on production
+      const baseUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3000' 
+        : 'https://tcisv2.vercel.app';
+      setSetupForm(prev => ({
+        ...prev,
+        redirect_uri: `${baseUrl}/auth/zoho/callback`
+      }));
+    }
+  }, [setupForm.redirect_uri]);
+
   // OAuth callback handling
   const [oauthForm, setOauthForm] = useState({
     authorization_code: '',
@@ -80,7 +94,7 @@ export default function ZohoCliqIntegrationPage() {
         const { data: authData, error } = await supabase
           .from('zoho_auth')
           .select('*')
-          .single();
+          .maybeSingle();
 
         if (error && error.code !== 'PGRST116') {
           throw error;
@@ -122,12 +136,68 @@ export default function ZohoCliqIntegrationPage() {
     const params = new URLSearchParams({
       client_id: setupForm.client_id,
       response_type: 'code',
-      scope: 'ZohoCliq.Channels.READ,ZohoCliq.Messages.READ',
+              scope: 'ZohoCliq.Channels.READ,ZohoCliq.Messages.READ,ZohoCliq.OrganizationChats.READ,ZohoCliq.OrganizationChannels.READ,ZohoCliq.Channels.ALL',
       redirect_uri: setupForm.redirect_uri,
       access_type: 'offline',
+      prompt: 'consent', // This ensures refresh token is generated
+      state: 'zoho_oauth_' + Date.now(), // Add state for security
     });
 
-    return `https://accounts.zoho.com/oauth/v2/auth?${params.toString()}`;
+    // Use the correct data center domain - change this to match your Zoho domain
+    // For India: https://accounts.zoho.in/oauth/v2/auth
+    // For EU: https://accounts.zoho.eu/oauth/v2/auth  
+    // For US: https://accounts.zoho.com/oauth/v2/auth
+    return `https://accounts.zoho.in/oauth/v2/auth?${params.toString()}`;
+  };
+
+  const handleOAuthPopup = () => {
+    if (!setupForm.client_id || !setupForm.client_secret || !setupForm.redirect_uri) {
+      toast.error('Please fill in all OAuth credentials first');
+      return;
+    }
+
+    const authUrl = getAuthUrl();
+    const popup = window.open(
+      authUrl,
+      'zoho_oauth',
+      'width=500,height=600,scrollbars=yes,resizable=yes'
+    );
+
+    if (!popup) {
+      toast.error('Popup blocked! Please allow popups for this site and try again.');
+      return;
+    }
+
+    // Listen for messages from the popup
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return; // Ignore messages from other origins
+      }
+
+      if (event.data.type === 'ZOHO_OAUTH_SUCCESS' && event.data.code) {
+        console.log('Received authorization code from popup:', event.data.code);
+        setOauthForm({ authorization_code: event.data.code });
+        popup.close();
+        window.removeEventListener('message', handleMessage);
+        toast.success('Authorization code received! You can now complete the setup.');
+      } else if (event.data.type === 'ZOHO_OAUTH_ERROR') {
+        console.error('OAuth error from popup:', event.data.error);
+        toast.error(`Authorization failed: ${event.data.error}`);
+        popup.close();
+        window.removeEventListener('message', handleMessage);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Check if popup was closed manually
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener('message', handleMessage);
+        console.log('OAuth popup was closed');
+      }
+    }, 1000);
   };
 
   const handleOAuthComplete = async () => {
@@ -138,59 +208,117 @@ export default function ZohoCliqIntegrationPage() {
 
     try {
       setSetupLoading(true);
+      console.log('Starting OAuth completion process...');
 
-      // Exchange authorization code for tokens
-      const tokenResponse = await fetch('https://accounts.zoho.com/oauth/v2/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
+      // Exchange authorization code for tokens via Supabase Edge Function
+      console.log('Making token exchange request...');
+      const tokenResponse = await supabase.functions.invoke('zoho-refresh-tokens', {
+        body: {
+          action: 'exchange_code',
           grant_type: 'authorization_code',
           client_id: setupForm.client_id,
           client_secret: setupForm.client_secret,
           redirect_uri: setupForm.redirect_uri,
           code: oauthForm.authorization_code,
-        }),
+        }
       });
 
-      if (!tokenResponse.ok) {
-        throw new Error('Failed to exchange authorization code for tokens');
+      console.log('Token response:', tokenResponse);
+
+      if (tokenResponse.error) {
+        console.error('Token exchange failed:', tokenResponse.error);
+        throw new Error(tokenResponse.error.message || 'Failed to exchange authorization code for tokens');
       }
 
-      const tokenData = await tokenResponse.json();
+      const tokenData = tokenResponse.data;
+      console.log('Token data received:', {
+        has_access_token: !!tokenData.access_token,
+        has_refresh_token: !!tokenData.refresh_token,
+        expires_in: tokenData.expires_in,
+        scope: tokenData.scope
+      });
 
       if (tokenData.error) {
         throw new Error(tokenData.error_description || tokenData.error);
       }
 
+      // Warn user if no refresh token (common with reused authorization codes)
+      if (!tokenData.refresh_token) {
+        console.warn('No refresh token received from Zoho. This is normal if the authorization code was already used.');
+        toast.success('Authentication successful! Note: You may need to re-authorize when the access token expires.');
+      }
+
       // Store tokens in database
       const authRequest: ZohoAuthSetupRequest = {
         access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
+        refresh_token: tokenData.refresh_token || null, // Handle case where no refresh token
         expires_in: tokenData.expires_in,
         scope: tokenData.scope,
       };
 
-      // Save to database
-      const { error: dbError } = await supabase
+      // Save to database with client credentials for auto-refresh
+      console.log('Saving tokens to database...');
+      
+      // First, check if there's an existing record
+      const { data: existingAuth } = await supabase
         .from('zoho_auth')
-        .upsert({
-          access_token: authRequest.access_token,
-          refresh_token: authRequest.refresh_token,
-          expires_at: new Date(Date.now() + (authRequest.expires_in * 1000)).toISOString(),
-          scope: authRequest.scope,
-          authenticated_by: platformUser.id,
-          updated_at: new Date().toISOString(),
-        });
+        .select('id')
+        .single();
+      
+      let dbError;
+      if (existingAuth) {
+        // Update existing record
+        console.log('Updating existing Zoho auth record:', existingAuth.id);
+        const { error } = await supabase
+          .from('zoho_auth')
+          .update({
+            access_token: authRequest.access_token,
+            refresh_token: authRequest.refresh_token, // Will be null if not provided
+            expires_at: new Date(Date.now() + (authRequest.expires_in * 1000)).toISOString(),
+            scope: authRequest.scope,
+            authenticated_by: platformUser.id,
+            client_id: setupForm.client_id, // Store for auto-refresh
+            client_secret: setupForm.client_secret, // Store for auto-refresh
+            auto_refresh_enabled: true,
+            refresh_error_count: 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingAuth.id);
+        dbError = error;
+      } else {
+        // Insert new record
+        console.log('Inserting new Zoho auth record');
+        const { error } = await supabase
+          .from('zoho_auth')
+          .insert({
+            access_token: authRequest.access_token,
+            refresh_token: authRequest.refresh_token, // Will be null if not provided
+            expires_at: new Date(Date.now() + (authRequest.expires_in * 1000)).toISOString(),
+            scope: authRequest.scope,
+            authenticated_by: platformUser.id,
+            client_id: setupForm.client_id, // Store for auto-refresh
+            client_secret: setupForm.client_secret, // Store for auto-refresh
+            auto_refresh_enabled: true,
+            refresh_error_count: 0,
+            updated_at: new Date().toISOString(),
+          });
+        dbError = error;
+      }
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw dbError;
+      }
+      
+      console.log('Tokens saved successfully!');
 
       toast.success('Zoho Cliq authentication configured successfully!');
       setShowSetupModal(false);
       setSetupForm({ client_id: '', client_secret: '', redirect_uri: '' });
       setOauthForm({ authorization_code: '' });
-      loadAuthStatus();
+      
+      // Reload auth status
+      window.location.reload();
     } catch (error) {
       console.error('Error setting up Zoho auth:', error);
       toast.error(`Authentication failed: ${error.message}`);
@@ -205,19 +333,22 @@ export default function ZohoCliqIntegrationPage() {
     try {
       setTestingConnection(true);
 
-      // Test the connection by making a simple API call
-      const response = await fetch('/api/zoho/test-connection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Connection test failed');
+      // Get the current user's session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
       }
 
-      const result = await response.json();
+      // Test the connection via Supabase Edge Function
+      const response = await supabase.functions.invoke('zoho-test-connection', {
+        body: { action: 'test' }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Connection test failed');
+      }
+
+      const result = response.data;
       
       if (result.success) {
         toast.success('Connection test successful!');
@@ -236,19 +367,34 @@ export default function ZohoCliqIntegrationPage() {
     try {
       setSetupLoading(true);
 
-      const response = await fetch('/api/zoho/refresh-tokens', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to refresh tokens');
+      // Get the current user's session for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
       }
 
-      toast.success('Tokens refreshed successfully!');
-      loadAuthStatus();
+      const response = await supabase.functions.invoke('zoho-refresh-tokens', {
+        body: { action: 'refresh' }
+      });
+
+      if (response.error) {
+        const errorData = response.error;
+        if (errorData.needs_reauth) {
+          toast.error('Please re-authorize with Zoho Cliq to refresh your access token.');
+          // Could optionally trigger the setup modal here
+        } else {
+          throw new Error(errorData.message || 'Failed to refresh tokens');
+        }
+        return;
+      }
+
+      const result = response.data;
+      if (result.success) {
+        toast.success('Tokens refreshed successfully!');
+        window.location.reload();
+      } else {
+        throw new Error(result.error || 'Failed to refresh tokens');
+      }
     } catch (error) {
       console.error('Error refreshing tokens:', error);
       toast.error(`Failed to refresh tokens: ${error.message}`);
@@ -265,10 +411,8 @@ export default function ZohoCliqIntegrationPage() {
     try {
       setSetupLoading(true);
 
-      const { error } = await supabase
-        .from('zoho_auth')
-        .delete()
-        .eq('id', authStatus.auth?.id);
+      // Call the proper Zoho revoke Edge Function
+      const { data, error } = await supabase.functions.invoke('zoho-revoke');
 
       if (error) throw error;
 
@@ -303,12 +447,12 @@ export default function ZohoCliqIntegrationPage() {
       return 'Not connected to Zoho Cliq';
     }
     if (authStatus.isExpired) {
-      return 'Authentication expired - please refresh or reconnect';
+      return 'Authentication expired - auto-refresh failed, please reconnect';
     }
     if (authStatus.daysUntilExpiry && authStatus.daysUntilExpiry <= 7) {
-      return `Authentication expires in ${authStatus.daysUntilExpiry} day(s)`;
+      return `Authentication expires in ${authStatus.daysUntilExpiry} day(s) - will auto-refresh`;
     }
-    return 'Successfully connected to Zoho Cliq';
+    return 'Successfully connected to Zoho Cliq - auto-refresh enabled';
   };
 
   if (loading) {
@@ -371,17 +515,15 @@ export default function ZohoCliqIntegrationPage() {
                     >
                       Test Connection
                     </Button>
-                    {(authStatus.isExpired || (authStatus.daysUntilExpiry && authStatus.daysUntilExpiry <= 30)) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={refreshTokens}
-                        loading={setupLoading}
-                      >
-                        <ArrowPathIcon className="h-4 w-4 mr-1" />
-                        Refresh
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshTokens}
+                      loading={setupLoading}
+                    >
+                      <ArrowPathIcon className="h-4 w-4 mr-1" />
+                      {authStatus.isExpired ? 'Refresh Now' : 'Manual Refresh'}
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -495,7 +637,7 @@ export default function ZohoCliqIntegrationPage() {
                 type="url"
                 value={setupForm.redirect_uri}
                 onChange={(e) => handleFormChange('redirect_uri', e.target.value)}
-                placeholder="https://yourdomain.com/auth/zoho/callback"
+                placeholder={`${typeof window !== 'undefined' ? window.location.origin : 'https://tcisv2.vercel.app'}/auth/zoho/callback`}
                 startIcon={<GlobeAltIcon className="h-5 w-5" />}
                 helperText="This should match the redirect URI configured in your Zoho OAuth app"
                 required
@@ -514,12 +656,12 @@ export default function ZohoCliqIntegrationPage() {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                     Click the button below to authorize TCIS to access your Zoho Cliq:
                   </p>
-                  <Button
-                    onClick={() => window.open(getAuthUrl(), '_blank')}
-                    className="w-full"
-                  >
-                    Authorize with Zoho Cliq
-                  </Button>
+                                      <Button
+                      onClick={handleOAuthPopup}
+                      className="w-full"
+                    >
+                      Authorize with Zoho Cliq
+                    </Button>
                 </div>
                 
                 <Input

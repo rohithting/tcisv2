@@ -286,21 +286,16 @@ export default function ClientRoomsPage() {
     try {
       setSyncingRooms(prev => new Set(prev).add(room.id));
 
-      const response = await fetch('/api/functions/zoho-sync-trigger', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-        body: JSON.stringify({
+      const response = await supabase.functions.invoke('zoho-sync-trigger', {
+        body: {
+          action: 'trigger_sync',
           mapping_id: room.zoho_mapping_id,
           full_sync: false,
-        }),
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Sync failed');
+      if (response.error) {
+        throw new Error(response.error.message || 'Sync failed');
       }
 
       toast.success(`Sync initiated for "${room.name}"`);

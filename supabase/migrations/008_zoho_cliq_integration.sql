@@ -1,6 +1,23 @@
 -- Zoho Cliq Integration Schema
 -- This migration adds support for Zoho Cliq channel integration
 
+-- First, create the missing is_backend_user function that's needed for RLS policies
+CREATE OR REPLACE FUNCTION is_backend_user(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM platform_users 
+        WHERE id = user_id 
+        AND platform_role IN ('super_admin', 'backend')
+        AND is_active = true
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant permissions on the utility function
+GRANT EXECUTE ON FUNCTION is_backend_user(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION is_backend_user(UUID) TO anon;
+
 -- Zoho authentication table (system-wide)
 create table zoho_auth (
     id serial primary key,

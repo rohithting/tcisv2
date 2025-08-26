@@ -93,23 +93,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex">
-      {/* Left Panel - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex flex-col lg:flex-row">
+      {/* Left Panel - Login Form - Mobile First */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-6 lg:p-12 order-2 lg:order-1">
+        <div className="w-full max-w-md space-y-6 sm:space-y-8">
           {/* Header */}
           <div className="text-center">
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-16 h-16 bg-primary-200 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-black ting-text">t</span>
+            <div className="flex items-center justify-center mb-4 sm:mb-6">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary-200 rounded-full flex items-center justify-center">
+                <span className="text-xl sm:text-2xl font-bold text-black ting-text">t</span>
               </div>
             </div>
             
-            <h1 className="text-3xl lg:text-4xl brand-heading text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl brand-heading text-gray-900 dark:text-white mb-2">
               Login to your account
             </h1>
             
-            <p className="text-gray-600 dark:text-gray-400 text-sm lg:text-base">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               This is a <span className="ting-text font-semibold">ting</span>.in only party.
             </p>
           </div>
@@ -120,9 +120,9 @@ export default function LoginPage() {
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {errors.general && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4">
                 <p className="text-red-800 dark:text-red-200 text-sm">{errors.general}</p>
               </div>
             )}
@@ -166,13 +166,13 @@ export default function LoginPage() {
               type="submit"
               loading={isLoading}
               fullWidth
-              className="mt-8"
+              className="mt-6 sm:mt-8 min-h-[48px] touch-target"
             >
               Login
             </Button>
 
             <div className="text-center">
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Don't have the <span className="ting-text font-semibold">ting</span> pass yet?{' '}
                 <Link
                   href="/auth/signup"
@@ -186,8 +186,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary-200 items-center justify-center relative overflow-hidden">
+      {/* Right Panel - Branding - Hidden on mobile, shown on desktop */}
+      <div className="hidden lg:flex lg:w-1/2 bg-primary-200 items-center justify-center relative overflow-hidden order-1 lg:order-2">
         <div className="text-center z-10">
           <h2 className="text-6xl xl:text-7xl brand-heading text-black mb-8">
             Ready to
