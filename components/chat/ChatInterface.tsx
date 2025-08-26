@@ -42,11 +42,19 @@ export function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<(() => void) | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Track the currently streaming assistant message id to update it in-place
+  const streamingMessageIdRef = useRef<number | null>(null);
+  const streamingMessageRef = useRef<ChatMessage | null>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, currentStreamingMessage]);
+
+  // Keep ref in sync with state to avoid stale closures inside SSE handlers
+  useEffect(() => {
+    streamingMessageRef.current = currentStreamingMessage;
+  }, [currentStreamingMessage]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -74,16 +82,19 @@ export function ChatInterface({
     setMessages(prev => [...prev, userMessage]);
     onNewMessage?.(userMessage);
 
-    // Create initial assistant message
+    // Create initial assistant message and insert into messages immediately
     const assistantMessage: ChatMessage = {
       id: Date.now() + 1, // Use timestamp + 1 as numeric ID
       type: 'assistant',
       content: '',
       timestamp: new Date().toISOString(),
       streaming: true,
+      citations: [],
     };
 
+    streamingMessageIdRef.current = assistantMessage.id;
     setCurrentStreamingMessage(assistantMessage);
+    setMessages(prev => [...prev, assistantMessage]);
     setIsStreaming(true);
 
     try {
@@ -107,64 +118,64 @@ export function ChatInterface({
         },
 
         onToken: (token: string) => {
+          // Update the streaming message state
           setCurrentStreamingMessage(prev => {
             if (!prev) return prev;
-            return {
-              ...prev,
-              content: prev.content + token,
-            };
+            return { ...prev, content: prev.content + token };
           });
+          // Update the message in the list in-place using the id ref
+          const id = streamingMessageIdRef.current;
+          if (id != null) {
+            setMessages(prev => prev.map(msg =>
+              msg.id === id ? { ...msg, content: (msg.content || '') + token } : msg
+            ));
+          }
         },
 
         onCitations: (citations: CitationDto[]) => {
           console.log('Citations received:', citations);
-          // Update both current streaming message and messages array to ensure citations are visible
+          // Update the streaming message state
           setCurrentStreamingMessage(prev => {
             if (!prev) return prev;
-            return {
-              ...prev,
-              citations,
-            };
+            return { ...prev, citations };
           });
-          
-          // Also update the messages array to ensure citations persist
-          setMessages(prev => {
-            const lastMessage = prev[prev.length - 1];
-            if (lastMessage && lastMessage.id === currentStreamingMessage?.id) {
-              return prev.map(msg => 
-                msg.id === lastMessage.id 
-                  ? { ...msg, citations } 
-                  : msg
-              );
-            }
-            return prev;
-          });
+          // Update the message in the list in-place using the id ref
+          const id = streamingMessageIdRef.current;
+          if (id != null) {
+            setMessages(prev => prev.map(msg =>
+              msg.id === id ? { ...msg, citations } : msg
+            ));
+          }
         },
 
         onEvaluationPayload: (evaluation: EvaluationPayload) => {
           setCurrentStreamingMessage(prev => {
             if (!prev) return prev;
-            return {
-              ...prev,
-              evaluation,
-            };
+            return { ...prev, evaluation };
           });
+          const id = streamingMessageIdRef.current;
+          if (id != null) {
+            setMessages(prev => prev.map(msg =>
+              msg.id === id ? { ...msg, evaluation } : msg
+            ));
+          }
         },
 
         onDone: (data: SSEDoneEvent) => {
           console.log('Stream completed:', data);
-          
-          if (currentStreamingMessage) {
-            const finalMessage: ChatMessage = {
-              ...currentStreamingMessage,
-              streaming: false,
-            };
-            
-            setMessages(prev => [...prev, finalMessage]);
-            onNewMessage?.(finalMessage);
+          const id = streamingMessageIdRef.current;
+          if (id != null) {
+            // Mark the existing assistant message as not streaming
+            setMessages(prev => prev.map(msg =>
+              msg.id === id ? { ...msg, streaming: false } : msg
+            ));
+            const latest = streamingMessageRef.current;
+            if (latest) {
+              onNewMessage?.({ ...latest, streaming: false });
+            }
           }
-          
           setCurrentStreamingMessage(null);
+          streamingMessageIdRef.current = null;
           setIsStreaming(false);
           abortControllerRef.current = null;
         },
@@ -208,19 +219,19 @@ export function ChatInterface({
       abortControllerRef.current();
       abortControllerRef.current = null;
       setIsStreaming(false);
-      
-      if (currentStreamingMessage) {
-        const stoppedMessage: ChatMessage = {
-          ...currentStreamingMessage,
-          content: currentStreamingMessage.content + '\n\n*Response was stopped by user.*',
-          streaming: false,
-        };
-        
-        setMessages(prev => [...prev, stoppedMessage]);
-        onNewMessage?.(stoppedMessage);
+      // Update existing assistant message as stopped
+      const id = streamingMessageIdRef.current;
+      if (id != null) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === id ? { ...msg, content: (msg.content || '') + '\n\n*Response was stopped by user.*', streaming: false } : msg
+        ));
+        const latest = streamingMessageRef.current;
+        if (latest) {
+          onNewMessage?.({ ...latest, content: latest.content + '\n\n*Response was stopped by user.*', streaming: false });
+        }
       }
-      
       setCurrentStreamingMessage(null);
+      streamingMessageIdRef.current = null;
     }
   };
 
