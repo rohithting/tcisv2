@@ -27,6 +27,7 @@ import {
   CogIcon
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api-services';
 
 export default function DashboardPage() {
   const { platformUser, supabase } = useAuth();
@@ -65,6 +66,7 @@ export default function DashboardPage() {
     const fetchDashboardStats = async () => {
       if (!supabase) return;
       
+      console.log(`📊 [DASHBOARD] Starting dashboard data fetch, tab visible: ${!document.hidden}`);
       setLoading(true);
       try {
         // Fetch basic counts
@@ -87,16 +89,19 @@ export default function DashboardPage() {
           .order('created_at', { ascending: false })
           .limit(5);
 
-        // Fetch pending jobs using our Edge Function
+        // Fetch pending jobs using our proper API client (FIXED for tab switching)
         let pendingJobs = 0;
         try {
-          const { data: pendingJobsData, error: pendingJobsError } = await supabase.functions.invoke('jobs', {
-            body: { action: 'list', client_id: 1, status: 'pending,queued,processing' }
+          console.log(`🔄 [DASHBOARD] Fetching pending jobs via API client...`);
+          // Use our API client instead of supabase.functions.invoke for proper token handling
+          const response = await api.jobs.list(supabase, '1', {
+            status: 'pending,queued,processing'
           });
           
-          pendingJobs = pendingJobsError ? 0 : (pendingJobsData?.jobs?.length || 0);
+          pendingJobs = response?.jobs?.length || 0;
+          console.log(`✅ [DASHBOARD] Successfully fetched ${pendingJobs} pending jobs`);
         } catch (error) {
-          console.warn('Could not fetch pending jobs from Edge Function, using fallback');
+          console.error(`❌ [DASHBOARD] Failed to fetch pending jobs:`, error);
           pendingJobs = 0;
         }
 

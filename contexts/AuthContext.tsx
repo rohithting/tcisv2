@@ -316,12 +316,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    // DEBUG: Add comprehensive logging for tab switching debugging
+    const handleVisibilityChange = () => {
+      console.log(`👁️ [AUTH-CONTEXT] Tab visibility changed: ${document.hidden ? 'HIDDEN' : 'VISIBLE'}`);
+      
+      if (!document.hidden) {
+        // Tab became visible - check session state after a delay
+        setTimeout(async () => {
+          try {
+            const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+            console.log(`🔍 [AUTH-CONTEXT] Post-visibility session check:`, {
+              hasSession: !!currentSession,
+              hasToken: !!currentSession?.access_token,
+              error: error?.message,
+              userId: currentSession?.user?.id,
+              localUser: user?.id,
+              sessionMatches: currentSession?.user?.id === user?.id,
+              tokenPreview: currentSession?.access_token?.substring(0, 20) + '...'
+            });
+            
+            // Check if our local state is out of sync
+            if (currentSession && (!user || currentSession.user.id !== user.id)) {
+              console.log(`⚠️ [AUTH-CONTEXT] Session state mismatch detected after tab switch`);
+            }
+          } catch (error) {
+            console.error(`❌ [AUTH-CONTEXT] Error checking session after tab switch:`, error);
+          }
+        }, 1000);
+      }
+    };
+
+    // Add tab visibility listener for debugging
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     // SIMPLIFIED: Let Supabase handle visibility changes, we just sync our state
     // Supabase Auth-JS has built-in visibility change handling that manages token refresh
     // We only need to ensure our local state stays in sync with Supabase's session state
     
     return () => {
       subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [supabase.auth, router, user, session, platformUser]);
 
