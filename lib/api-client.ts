@@ -70,6 +70,9 @@ export async function apiFetch<T>(
     headers: {
       'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
       ...options.headers,
     },
   });
@@ -85,6 +88,9 @@ export async function apiFetch<T>(
           headers: {
             'Authorization': `Bearer ${refreshData.session.access_token}`,
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
             ...options.headers,
           },
         });
