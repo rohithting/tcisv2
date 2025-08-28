@@ -41,46 +41,30 @@ export function getErrorMessage(error: any): string {
   }
 }
 
-// DEBUG: Enhanced API fetch function with comprehensive debugging for tab switching issue
+// FIXED: Enhanced API fetch function with proper token handling for tab switching
 export async function apiFetch<T>(
   supabase: any,
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  console.log(`🚀 [API-CLIENT] Starting API call to: ${endpoint}`);
-  console.log(`🚀 [API-CLIENT] Tab visibility: ${document.hidden ? 'HIDDEN' : 'VISIBLE'}`);
+  console.log(`🚀 [API-CLIENT] API call to: ${endpoint}`);
   
   // Get current session - let Supabase handle token refresh automatically
   let { data: { session }, error: sessionError } = await supabase.auth.getSession();
   
-  console.log(`🔍 [API-CLIENT] Session check:`, {
-    hasSession: !!session,
-    hasToken: !!session?.access_token,
-    sessionError: sessionError?.message,
-    userId: session?.user?.id,
-    expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A',
-    timeUntilExpiry: session?.expires_at ? Math.floor((session.expires_at * 1000 - Date.now()) / 1000) + 's' : 'N/A'
-  });
-  
   if (sessionError || !session?.access_token) {
-    console.log(`⚠️ [API-CLIENT] No valid session, attempting refresh...`);
     // Try one refresh attempt if no valid session
     try {
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError || !refreshData.session) {
-        console.error(`❌ [API-CLIENT] Session refresh failed:`, refreshError?.message);
         throw new Error('No authenticated session');
       }
       session = refreshData.session;
-      console.log(`✅ [API-CLIENT] Session refreshed successfully`);
     } catch (refreshError) {
-      console.error(`❌ [API-CLIENT] Session refresh exception:`, refreshError);
       throw new Error('No authenticated session');
     }
   }
 
-  console.log(`📤 [API-CLIENT] Making request with token: ${session.access_token.substring(0, 20)}...`);
-  
   const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1${endpoint}`, {
     ...options,
     headers: {
@@ -90,15 +74,11 @@ export async function apiFetch<T>(
     },
   });
 
-  console.log(`📥 [API-CLIENT] Response status: ${response.status} ${response.statusText}`);
-
   // If we get a 401, try refreshing the session once and retry
   if (response.status === 401) {
-    console.log(`🔄 [API-CLIENT] Got 401, attempting token refresh and retry...`);
     try {
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       if (!refreshError && refreshData.session) {
-        console.log(`✅ [API-CLIENT] Token refreshed for retry, new token: ${refreshData.session.access_token.substring(0, 20)}...`);
         // Retry the request with the new token
         const retryResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1${endpoint}`, {
           ...options,
@@ -109,32 +89,25 @@ export async function apiFetch<T>(
           },
         });
         
-        console.log(`📥 [API-CLIENT] Retry response status: ${retryResponse.status} ${retryResponse.statusText}`);
-        
         if (!retryResponse.ok) {
           const error = await retryResponse.text();
-          console.error(`❌ [API-CLIENT] Retry failed: ${retryResponse.status} ${error}`);
           throw new Error(`API call failed: ${retryResponse.status} ${error}`);
         }
         
-        console.log(`✅ [API-CLIENT] Retry successful!`);
         return retryResponse.json();
-      } else {
-        console.error(`❌ [API-CLIENT] Token refresh failed for retry:`, refreshError?.message);
       }
     } catch (retryError) {
-      console.error(`❌ [API-CLIENT] Retry exception:`, retryError);
       // If retry fails, fall through to original error handling
     }
   }
 
   if (!response.ok) {
     const error = await response.text();
-    console.error(`❌ [API-CLIENT] Final API call failed: ${response.status} ${error}`);
+    console.error(`❌ [API-CLIENT] API call failed: ${response.status} ${error}`);
     throw new Error(`API call failed: ${response.status} ${error}`);
   }
 
-  console.log(`✅ [API-CLIENT] API call successful!`);
+  console.log(`✅ [API-CLIENT] API call successful`);
   return response.json();
 }
 
