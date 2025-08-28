@@ -1,41 +1,57 @@
-// Database utility functions
+// Database utility functions - FIXED VERSION
 // Provides typed queries and database operations for the Edge Functions
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 class DatabaseManager {
   supabase;
+  cache;
   constructor(){
     this.supabase = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    // Token cache with TTL for embeddings
+    this.cache = {
+      token: null,
+      expires: 0
+    };
   }
   /**
-   * Hybrid search combining vector similarity and text search
+   * Hybrid search combining vector similarity and text search - FIXED SCHEMA
    */ async hybridSearch(params) {
     const { client_id, filters, queryVec, question } = params;
     let vectorTop = [];
     let textTop = [];
     try {
-      // Build base query for chunks using correct field names
+      // Build base query for chunks using correct field names - FIXED: room_type instead of type
       let baseQuery = this.supabase.from('chunks').select(`
           id,
-          content,
+          text,
           room_id,
           client_id,
-          upload_id,
-          metadata,
-          chunk_index,
+          source_upload_id,
+          first_ts,
+          last_ts,
+          participants,
           token_count,
-          created_at
+          created_at,
+          rooms!inner(
+            id,
+            name,
+            room_type
+          )
         `).eq('client_id', client_id);
       // Apply filters - only room_ids for now to avoid blocking results
       if (filters?.room_ids && filters.room_ids.length > 0) {
         baseQuery = baseQuery.in('room_id', filters.room_ids);
       }
-      // Temporarily disable date filters to debug retrieval issues
-      // if (filters?.date_from) {
-      //   baseQuery = baseQuery.gte('created_at', filters.date_from);
-      // }
-      // if (filters?.date_to) {
-      //   baseQuery = baseQuery.lte('created_at', filters.date_to);
-      // }
+      // Apply date filters using message timestamps
+      if (filters?.date_from) {
+        baseQuery = baseQuery.gte('last_ts', filters.date_from);
+      }
+      if (filters?.date_to) {
+        baseQuery = baseQuery.lte('first_ts', filters.date_to);
+      }
+      // Apply participant filter
+      if (filters?.participants && filters.participants.length > 0) {
+        baseQuery = baseQuery.overlaps('participants', filters.participants);
+      }
       // Vector search (if query vector provided)
       if (queryVec && queryVec.length > 0) {
         try {
@@ -51,7 +67,8 @@ class DatabaseManager {
             vectorTop = vectorData.map((item)=>({
                 ...item,
                 similarity_score: item.similarity,
-                text: item.content // Normalize field name for MMR
+                content: item.text || item.content,
+                room_name: item.rooms?.name || 'Unknown Room'
               }));
           }
         } catch (vectorErr) {
@@ -59,9 +76,9 @@ class DatabaseManager {
           vectorTop = [];
         }
       }
-      // Text search using content field - more permissive
+      // Text search using text field - more permissive
       try {
-        const { data: textData, error: textError } = await baseQuery.textSearch('content', question, {
+        const { data: textData, error: textError } = await baseQuery.textSearch('text', question, {
           type: 'plain',
           config: 'english'
         }).limit(100); // Increase limit
@@ -71,7 +88,9 @@ class DatabaseManager {
         } else {
           textTop = (textData || []).map((item)=>({
               ...item,
-              text: item.content,
+              content: item.text,
+              room_name: item.rooms?.name || 'Unknown Room',
+              room_type: item.rooms?.room_type || 'unknown',
               similarity_score: 0.5 // Default score for text search results
             }));
         }
@@ -84,13 +103,17 @@ class DatabaseManager {
         console.log('Sample vector result:', {
           id: vectorTop[0].id,
           content: vectorTop[0].content?.substring(0, 100),
+          first_ts: vectorTop[0].first_ts,
+          room_name: vectorTop[0].room_name,
           similarity: vectorTop[0].similarity_score
         });
       }
       if (textTop.length > 0) {
         console.log('Sample text result:', {
           id: textTop[0].id,
-          content: textTop[0].content?.substring(0, 100)
+          content: textTop[0].content?.substring(0, 100),
+          first_ts: textTop[0].first_ts,
+          room_name: textTop[0].room_name
         });
       }
       return {
@@ -195,8 +218,11 @@ class DatabaseManager {
     }
   }
   /**
-   * Create proper JWT for Google Cloud authentication
+   * Enhanced JWT creation with better error handling and validation - FIXED
    */ async createJWT(serviceAccount) {
+    if (!serviceAccount || !serviceAccount.client_email || !serviceAccount.private_key) {
+      throw new Error('Invalid service account: missing required fields');
+    }
     const header = {
       alg: 'RS256',
       typ: 'JWT'
@@ -209,28 +235,40 @@ class DatabaseManager {
       exp: now + 3600,
       iat: now
     };
-    // Encode header and payload
+    // Base64URL encode header and payload
     const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     const data = `${encodedHeader}.${encodedPayload}`;
-    // Import the private key - handle \n characters properly
+    // Process private key with enhanced format handling
     let privateKeyPem = serviceAccount.private_key;
-    // Debug log the private key format
-    console.log('Private key preview:', privateKeyPem.substring(0, 100));
-    // Replace literal \n with actual newlines if needed
+    // Handle various private key formats
     if (privateKeyPem.includes('\\n')) {
       privateKeyPem = privateKeyPem.replace(/\\n/g, '\n');
-      console.log('Converted \\n to newlines');
     }
-    // Extract the base64 content more carefully
+    // Format single-line keys
+    if (!privateKeyPem.includes('\n')) {
+      privateKeyPem = privateKeyPem.replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n').replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
+      const lines = privateKeyPem.split('\n');
+      const formattedLines = [];
+      for (const line of lines){
+        if (line.includes('-----BEGIN') || line.includes('-----END') || line.length <= 64) {
+          formattedLines.push(line);
+        } else {
+          // Split long lines into 64-character chunks
+          for(let i = 0; i < line.length; i += 64){
+            formattedLines.push(line.substring(i, i + 64));
+          }
+        }
+      }
+      privateKeyPem = formattedLines.join('\n');
+    }
+    // Extract PEM content
     const lines = privateKeyPem.split('\n');
     const pemContent = lines.filter((line)=>!line.includes('-----BEGIN') && !line.includes('-----END') && line.trim().length > 0).join('');
-    console.log('PEM content length:', pemContent.length);
-    console.log('PEM content preview:', pemContent.substring(0, 50));
     try {
       // Convert PEM to binary
       const binaryDer = Uint8Array.from(atob(pemContent), (c)=>c.charCodeAt(0));
-      // Import the key
+      // Import the key with enhanced error handling
       const cryptoKey = await crypto.subtle.importKey('pkcs8', binaryDer, {
         name: 'RSASSA-PKCS1-v1_5',
         hash: 'SHA-256'
@@ -241,34 +279,45 @@ class DatabaseManager {
       const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', cryptoKey, new TextEncoder().encode(data));
       // Encode signature
       const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+      console.log('DB: JWT created successfully');
       return `${data}.${encodedSignature}`;
     } catch (error) {
-      console.error('JWT creation failed:', error);
-      console.error('PEM content that failed:', pemContent);
-      throw error;
+      console.error('DB: JWT creation failed:', error);
+      console.error('PEM content length:', pemContent.length);
+      throw new Error(`JWT creation failed: ${error.message}`);
     }
   }
   /**
-   * Get embeddings for a text using Google's text-embedding-gecko model
-   * FIXED: Proper JWT implementation
-   */ async getEmbeddings(text) {
+   * Enhanced access token management with caching - FIXED BASE64 HANDLING
+   */ async getAccessToken() {
+    // Check if cached token is still valid
+    if (this.cache.token && Date.now() < this.cache.expires) {
+      console.log('DB: Using cached access token');
+      return this.cache.token;
+    }
     try {
-      // Get service account JSON from environment variable
-      const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
+      let serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
       if (!serviceAccountJson) {
-        console.warn('GOOGLE_SERVICE_ACCOUNT_JSON not set, skipping embeddings');
-        return null;
+        throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON environment variable not set');
       }
-      console.log('DB: Service account JSON length:', serviceAccountJson.length);
+      // Handle base64 encoded service accounts - FIXED: Added missing logic
+      if (!serviceAccountJson.trim().startsWith('{')) {
+        try {
+          console.log('DB: Decoding base64 service account...');
+          serviceAccountJson = atob(serviceAccountJson);
+          console.log('DB: Successfully decoded base64 service account');
+        } catch (decodeError) {
+          throw new Error('Service account appears to be base64 but failed to decode');
+        }
+      }
       let serviceAccount;
       try {
         serviceAccount = JSON.parse(serviceAccountJson);
-        console.log('DB: JSON parsed successfully, client_email:', serviceAccount.client_email);
+        console.log('DB: Service account parsed, email:', serviceAccount.client_email);
       } catch (parseError) {
-        console.error('DB: JSON parse error:', parseError);
         throw new Error(`Failed to parse service account JSON: ${parseError.message}`);
       }
-      // Create proper JWT
+      // Create JWT
       const jwt = await this.createJWT(serviceAccount);
       // Exchange JWT for access token
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -283,11 +332,25 @@ class DatabaseManager {
       });
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        throw new Error(`Failed to get access token: ${errorText}`);
+        throw new Error(`Token exchange failed: ${tokenResponse.status} ${errorText}`);
       }
       const tokenData = await tokenResponse.json();
-      const accessToken = tokenData.access_token;
-      // Call Google's text-embedding-gecko model
+      // Cache the token with expiration buffer
+      this.cache.token = tokenData.access_token;
+      this.cache.expires = Date.now() + (tokenData.expires_in - 300) * 1000; // 5 min buffer
+      console.log('DB: New access token obtained and cached');
+      return tokenData.access_token;
+    } catch (error) {
+      console.error('DB: Access token error:', error);
+      throw new Error(`Failed to authenticate with Google Cloud: ${error.message}`);
+    }
+  }
+  /**
+   * Get embeddings for a text using Google's text-embedding-gecko model - FIXED BASE64 HANDLING
+   */ async getEmbeddings(text) {
+    try {
+      const accessToken = await this.getAccessToken();
+      // Call Google's text-embedding-004 model
       const projectId = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID') || 'cellular-axon-458006-e1';
       const location = Deno.env.get('GOOGLE_CLOUD_LOCATION') || 'us-central1';
       const embeddingResponse = await fetch(`https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/text-embedding-004:predict`, {
@@ -309,10 +372,10 @@ class DatabaseManager {
         throw new Error(`Embedding API error: ${embeddingResponse.status} ${errorText}`);
       }
       const embeddingData = await embeddingResponse.json();
-      console.log('Embeddings obtained successfully');
+      console.log('DB: Embeddings obtained successfully');
       return embeddingData.predictions[0].embeddings.values;
     } catch (error) {
-      console.error('Error getting embeddings:', error);
+      console.error('DB: Error getting embeddings:', error);
       // Return null to continue with text-only search instead of throwing
       return null;
     }
@@ -331,6 +394,113 @@ class DatabaseManager {
     } catch (error) {
       console.error('Error updating query:', error);
       throw error;
+    }
+  }
+  /**
+   * Debug method to check recent chunks - ADDED FOR TROUBLESHOOTING
+   */ async debugRecentChunks(clientId, limit = 10) {
+    try {
+      console.log('DEBUG: Checking recent chunks for client:', clientId);
+      const { data, error } = await this.supabase.from('chunks').select(`
+          id,
+          text,
+          room_id,
+          client_id,
+          first_ts,
+          last_ts,
+          created_at,
+          rooms!inner(
+            id,
+            name,
+            room_type
+          )
+        `).eq('client_id', clientId).order('last_ts', {
+        ascending: false
+      }).limit(limit);
+      if (error) {
+        console.error('DEBUG: Error fetching recent chunks:', error);
+        return;
+      }
+      console.log(`DEBUG: Found ${data?.length || 0} recent chunks`);
+      if (data && data.length > 0) {
+        data.forEach((chunk, index)=>{
+          console.log(`DEBUG: Chunk ${index + 1}:`, {
+            id: chunk.id,
+            room_name: chunk.rooms?.name,
+            room_type: chunk.rooms?.room_type,
+            first_ts: chunk.first_ts,
+            last_ts: chunk.last_ts,
+            created_at: chunk.created_at,
+            content_preview: chunk.text?.substring(0, 100)
+          });
+        });
+      } else {
+        console.log('DEBUG: No chunks found for client');
+      }
+      return data;
+    } catch (error) {
+      console.error('DEBUG: Error in debugRecentChunks:', error);
+      return null;
+    }
+  }
+  /**
+   * Get chunks with enhanced filtering for recency queries - ADDED FOR BETTER RECENCY HANDLING
+   */ async getRecentChunks(clientId, options = {}) {
+    const { limit = 20, roomType = null, roomName = null, sinceDate = null } = options;
+    try {
+      let query = this.supabase.from('chunks').select(`
+          id,
+          text,
+          room_id,
+          client_id,
+          source_upload_id,
+          first_ts,
+          last_ts,
+          participants,
+          token_count,
+          created_at,
+          rooms!inner(
+            id,
+            name,
+            room_type
+          )
+        `).eq('client_id', clientId);
+      // Filter by room type if specified
+      if (roomType) {
+        query = query.eq('rooms.room_type', roomType);
+      }
+      // Filter by room name if specified (case insensitive)
+      if (roomName) {
+        query = query.ilike('rooms.name', `%${roomName}%`);
+      }
+      // Filter by date if specified
+      if (sinceDate) {
+        query = query.gte('last_ts', sinceDate);
+      }
+      const { data, error } = await query.order('last_ts', {
+        ascending: false
+      }).limit(limit);
+      if (error) {
+        console.error('Error fetching recent chunks:', error);
+        return [];
+      }
+      console.log(`Found ${data?.length || 0} recent chunks with filters:`, {
+        roomType,
+        roomName,
+        sinceDate,
+        limit
+      });
+      return (data || []).map((chunk)=>({
+          ...chunk,
+          content: chunk.text,
+          room_name: chunk.rooms?.name || 'Unknown Room',
+          room_type: chunk.rooms?.room_type || 'unknown',
+          similarity_score: 0.9,
+          source: 'recency'
+        }));
+    } catch (error) {
+      console.error('Error in getRecentChunks:', error);
+      return [];
     }
   }
 }

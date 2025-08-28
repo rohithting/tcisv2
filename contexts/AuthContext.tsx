@@ -316,118 +316,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // FIXED: Add tab switching handler to prevent auth state conflicts
-    const handleVisibilityChange = () => {
-      // Only handle auth state when tab becomes visible
-      if (!document.hidden) {
-        console.log('🔄 Tab became visible, checking auth state stability...');
-        
-        // Give auth state time to stabilize after tab switch
-        setTimeout(async () => {
-          try {
-            // Check if we have a valid session
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            
-            if (currentSession?.user) {
-              // Session exists, ensure our state is consistent
-              if (!user || !session) {
-                console.log('🔄 Restoring auth state after tab switch...');
-                setUser(currentSession.user);
-                setSession(currentSession);
-                
-                // Try to restore platform user if missing
-                if (!platformUser) {
-                  try {
-                    const platformUserData = await fetchPlatformUser(currentSession.user.id);
-                    if (platformUserData) {
-                      setPlatformUser(platformUserData);
-                    }
-                  } catch (error) {
-                    console.log('Could not restore platform user after tab switch');
-                  }
-                }
-              }
-            }
-          } catch (error) {
-            console.log('Error checking auth state after tab switch:', error);
-          }
-        }, 1000); // Wait 1 second for auth state to stabilize
-      }
-    };
-
-    // Add tab visibility listener
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // SIMPLIFIED: Let Supabase handle visibility changes, we just sync our state
+    // Supabase Auth-JS has built-in visibility change handling that manages token refresh
+    // We only need to ensure our local state stays in sync with Supabase's session state
     
     return () => {
       subscription.unsubscribe();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [supabase.auth, router, user, session, platformUser]);
 
-  // NEW: Periodic session health check to keep sessions alive during idle periods
+  // SIMPLIFIED: Lightweight session state sync (let Supabase handle the heavy lifting)
   useEffect(() => {
     if (!user || !session) return;
 
-    // FIXED: Add session health check to prevent auth state instability
-    const sessionHealthCheck = async () => {
+    // Simple state consistency check - only run when absolutely necessary
+    const syncSessionState = async () => {
       try {
-        // Check if session is still valid
+        // Only check if our local state might be stale
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
-        if (error) {
-          console.log('Session health check error:', error);
+        if (error || !currentSession) {
+          // Let the auth state change handler deal with this
           return;
         }
         
-        if (!currentSession) {
-          console.log('Session expired during health check');
-          setSession(null);
-          setUser(null);
-          setPlatformUser(null);
-          router.push('/auth/login');
-          return;
-        }
-        
-        // Session is valid, ensure our state is consistent
-        if (currentSession.user.id !== user.id) {
-          console.log('User ID mismatch, updating state...');
+        // Only update if there's an actual mismatch
+        if (currentSession.user.id !== user.id || 
+            currentSession.access_token !== session.access_token) {
+          console.log('🔄 Syncing session state with Supabase...');
           setUser(currentSession.user);
           setSession(currentSession);
         }
         
-        // Check if platform user needs refresh
-        if (!platformUser || platformUser.id !== currentSession.user.id) {
+        // Sync platform user if missing
+        if (!platformUser && currentSession.user.id) {
           try {
             const platformUserData = await fetchPlatformUser(currentSession.user.id);
             if (platformUserData) {
               setPlatformUser(platformUserData);
             }
           } catch (error) {
-            console.log('Could not refresh platform user during health check');
+            // Ignore platform user fetch errors - not critical
           }
         }
         
       } catch (error) {
-        console.log('Session health check failed:', error);
+        // Ignore sync errors - let auth state changes handle issues
       }
     };
 
-    // Run health check every 5 minutes
-    const healthCheckInterval = setInterval(sessionHealthCheck, 5 * 60 * 1000);
-    
-    // Also run health check when tab becomes visible (after tab switch)
-    const handleTabFocus = () => {
-      // Delay health check to let auth state stabilize
-      setTimeout(sessionHealthCheck, 2000);
-    };
-    
-    window.addEventListener('focus', handleTabFocus);
-    
+    // Only run sync check every 10 minutes (much less aggressive)
+    const syncInterval = setInterval(syncSessionState, 10 * 60 * 1000);
+
     return () => {
-      clearInterval(healthCheckInterval);
-      window.removeEventListener('focus', handleTabFocus);
+      clearInterval(syncInterval);
     };
-  }, [user, session, platformUser, supabase.auth, router]);
+  }, [user, session, platformUser, supabase]);
 
   // Lazy session validation - only validate when actually needed
   const validateSession = useCallback(async (): Promise<boolean> => {

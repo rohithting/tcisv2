@@ -294,6 +294,7 @@ serve(async (req)=>{
     // Create SSE stream
     console.log('Creating SSE stream...');
     const stream = new SSEStream(correlationId);
+    
     // Helper function for error handling
     async function handleError(queryType) {
       const query_id = await db.insertQuery({
@@ -311,6 +312,7 @@ serve(async (req)=>{
         latency_ms: Date.now() - t0
       });
     }
+    
     // Process the request and handle streaming
     const processRequest = async ()=>{
       try {
@@ -367,14 +369,17 @@ serve(async (req)=>{
             // Call Gemini directly using the specialized casual method
             console.log('🤖 Calling Gemini for casual response...');
             const fullResponse = await geminiClient.generateCasualResponse(question, contextText);
+
             // FIXED: Stream word by word instead of character by character
             const words = fullResponse.split(' ');
+
             for(let i = 0; i < words.length; i++){
               let wordToSend = words[i];
               // Add space after each word except the last one
               if (i < words.length - 1) {
                 wordToSend += ' ';
               }
+
               stream.token(wordToSend);
               // Small delay for smooth streaming
               await new Promise((resolve)=>setTimeout(resolve, 50));
@@ -406,9 +411,11 @@ serve(async (req)=>{
         // =================
         async function handleRAGMode() {
           console.log('📚 Processing enhanced RAG mode...');
+          
           // Initialize search result variables
           let vectorResults = [];
           let textResults = [];
+          
           // STEP 1: ANALYZE QUESTION FOR BETTER SEARCH STRATEGY
           const isTimeBasedQuery = /\b(last (week|month|day|year)|past (week|month)|in the last|within|yesterday|today|this week|this month)/i.test(question);
           const isRecencyQuery = /\b(latest|most recent|newest|last|recent|when was the last|what.*latest)\b/i.test(question);
@@ -496,41 +503,50 @@ serve(async (req)=>{
           }
           // Check for recency-based queries first
           if (isRecencyQuery) {
-            console.log('🕐 Detected recency query, using enhanced timestamp-based retrieval');
-            // First, debug what recent chunks are available
-            await db.debugRecentChunks(client_id, 10);
-            // For recency queries, use the new enhanced method
+            console.log('🕐 Detected recency query, using timestamp-based retrieval');
+            
+            // For recency queries, get the most recent chunks directly
             try {
-              // Parse room type from question - look for "zoho cliq", "whatsapp", etc.
-              let roomTypeFilter = null;
-              let roomNameFilter = null;
-              if (/zoho\s+cliq/i.test(question)) {
-                roomTypeFilter = 'internal';
-                roomNameFilter = 'cliq';
-                console.log('🎯 Filtering for Zoho Cliq (internal) rooms');
-              } else if (/whatsapp/i.test(question)) {
-                roomTypeFilter = 'external';
-                console.log('🎯 Filtering for WhatsApp (external) rooms');
-              }
-              const recentChunks = await db.getRecentChunks(client_id, {
-                limit: 20,
-                roomType: roomTypeFilter,
-                roomName: roomNameFilter,
-                sinceDate: null // Get all recent, regardless of date
-              });
-              if (recentChunks && recentChunks.length > 0) {
-                vectorResults = recentChunks;
-                console.log(`📅 Found ${vectorResults.length} recent chunks using enhanced method`);
-                console.log(`📅 Latest chunk from: ${vectorResults[0]?.last_ts}`);
-                console.log(`📅 Room: ${vectorResults[0]?.room_name} (${vectorResults[0]?.room_type})`);
+              const { data: recentChunks, error: recentError } = await supabase
+                .from('chunks')
+                .select(`
+                  id,
+                  text,
+                  room_id,
+                  client_id,
+                  source_upload_id,
+                  first_ts,
+                  last_ts,
+                  participants,
+                  token_count,
+                  created_at,
+                  rooms!inner(
+                    id,
+                    name,
+                    type
+                  )
+                `)
+                .eq('client_id', client_id)
+                .order('last_ts', { ascending: false })
+                .limit(20);
+                
+              if (!recentError && recentChunks) {
+                vectorResults = recentChunks.map(chunk => ({
+                  ...chunk,
+                  content: chunk.text,
+                  room_name: chunk.rooms?.name || 'Unknown Room',
+                  similarity_score: 0.9, // High score for recency matches
+                  source: 'recency'
+                }));
+                
+                console.log(`📅 Found ${vectorResults.length} recent chunks, latest from: ${vectorResults[0]?.last_ts}`);
                 textResults = []; // No text results needed for direct recency search
-              } else {
-                console.warn('⚠️ Enhanced recency query returned no results');
               }
             } catch (error) {
-              console.error('Enhanced recency query failed, falling back to hybrid search:', error);
+              console.error('Recency query failed, falling back to hybrid search:', error);
             }
           }
+          
           // If no candidates from recency search, perform hybrid search with enhanced parameters
           if (vectorResults.length === 0) {
             try {
@@ -549,15 +565,15 @@ serve(async (req)=>{
               textResults = [];
             }
           }
+          
           console.log('✅ Enhanced search completed - Vector:', vectorResults.length, 'Text:', textResults.length);
           // If deadline query didn't return good results, try broader search
           if (isDeadlineQuery && vectorResults.length + textResults.length < 5) {
-            console.log('🔄 Deadline query returned few results, trying broader search...');
-            const broaderFilters = {
-              ...enhancedFilters
-            };
-            delete broaderFilters.keywords; // Remove keyword restriction
-            try {
+              console.log('🔄 Deadline query returned few results, trying broader search...');
+              const broaderFilters = {
+                ...enhancedFilters
+              };
+              delete broaderFilters.keywords; // Remove keyword restriction
               const broaderResults = await db.hybridSearch({
                 client_id,
                 filters: broaderFilters,
@@ -574,11 +590,11 @@ serve(async (req)=>{
                 ...broaderResults.textTop || []
               ];
               console.log('✅ Broader search added - Total Vector:', vectorResults.length, 'Total Text:', textResults.length);
-            } catch (error) {
-              console.error('❌ Enhanced hybrid search failed:', error);
-              vectorResults = [];
-              textResults = [];
             }
+          } catch (error) {
+            console.error('❌ Enhanced hybrid search failed:', error);
+            vectorResults = [];
+            textResults = [];
           }
           // STEP 4: ENHANCED RERANK AND DEDUPE WITH TIME PREFERENCE
           console.log('🎯 Step 4: Enhanced reranking and deduplicating results...');
@@ -589,9 +605,9 @@ serve(async (req)=>{
           // Apply enhanced MMR with time and keyword preferences
           const rankedChunks = mmr(allCandidates, {
             lambda: isRecencyQuery ? 0.6 : 0.7,
-            maxResults: isTimeBasedQuery || isRecencyQuery ? 15 : 12,
+            maxResults: (isTimeBasedQuery || isRecencyQuery) ? 15 : 12,
             diversityWeight: isRecencyQuery ? 0.2 : 0.3,
-            recencyWeight: isRecencyQuery ? 0.6 : isTimeBasedQuery ? 0.4 : 0.2 // Highest recency weight for latest queries
+            recencyWeight: isRecencyQuery ? 0.6 : (isTimeBasedQuery ? 0.4 : 0.2) // Highest recency weight for latest queries
           });
           console.log('✅ Enhanced ranking completed - Final chunks:', rankedChunks.length);
           // STEP 5: ENHANCED CITATION FORMATTING
@@ -688,24 +704,6 @@ INSTRUCTIONS:
 - Provide context about what happened when
 
 ${driversContext}`;
-            } else if (isRecencyQuery) {
-              systemPrompt = `You are ATOM, a virtual employee at Ting Works LLP, analyzing recent chat data.
-
-TASK: Identify and present the most recent message/conversation based on timestamps.
-
-CRITICAL INSTRUCTIONS:
-- The chunks are ordered chronologically with the MOST RECENT content appearing FIRST
-- The FIRST chunk in the context contains the latest/most recent message
-- When asked for "latest" or "most recent", always reference the FIRST chunk
-- Pay attention to chunk IDs and timestamps to identify the most recent content
-- Be specific about which chunk contains the most recent message
-
-RESPONSE FORMAT:
-- Clearly state which message/conversation is most recent
-- Reference the correct chunk ID that contains the latest content
-- Include timestamp information when available
-
-${driversContext}`;
             } else {
               systemPrompt = `You are ATOM, a virtual employee at Ting Works LLP analyzing chat conversations. Answer questions using the provided chat context and conversation history. Include relevant citations referring to chunk IDs when referencing specific information. Be conversational and helpful.${driversContext}`;
             }
@@ -717,8 +715,8 @@ ${driversContext}`;
             // Send the response through streaming for UX
             // REPLACE the RAG streaming section with this:
             if (fullResponse && fullResponse.length > 0) {
-              // FIXED: Stream word by word with proper spacing
-              const words = fullResponse.split(' ');
+                          // FIXED: Stream word by word with proper spacing
+            const words = fullResponse.split(' ');
               // Send each word individually with proper spacing to prevent concatenation issues
               for(let i = 0; i < words.length; i++){
                 let wordToSend = words[i];
@@ -964,6 +962,7 @@ ${driversContext}`;
         handleSSEError(stream, error, correlationId);
       }
     };
+    
     // Start processing in background
     console.log('🚀 Starting background processing...');
     processRequest();

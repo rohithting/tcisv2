@@ -52,30 +52,15 @@ async function forceRefreshToken(supabase: any): Promise<string | null> {
 
 /**
  * Get current session token for authentication
- * Simplified for reliability
+ * SIMPLIFIED: Let Supabase handle token refresh, we just get the current token
  */
 async function getAuthToken(supabase: any): Promise<string | null> {
   try {
-    // Get current session
+    // Simply get the current session - Supabase handles refresh automatically
     const { data: { session }, error } = await supabase.auth.getSession();
     
     if (error || !session) {
       return null;
-    }
-
-    // Check if token is about to expire (within 5 minutes)
-    const now = Math.floor(Date.now() / 1000);
-    const tokenExp = session.expires_at || 0;
-    
-    if (tokenExp - now < 300) { // 5 minutes buffer
-      // Refresh the token
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError || !refreshData.session) {
-        return null;
-      }
-      
-      return refreshData.session.access_token;
     }
     
     return session.access_token;
@@ -212,15 +197,28 @@ export async function apiSSE<T = any>(
 ): Promise<{ abort: () => void }> {
   const correlationId = generateCorrelationId();
   
-  // Get authentication token
-  const token = await getAuthToken(supabase);
+  // Get authentication token (simplified)
+  let token = await getAuthToken(supabase);
   
   if (!token) {
-    throw {
-      error_code: 'E_UNAUTHORIZED',
-      message: 'Authentication required',
-      status: 401,
-    } as ApiError;
+    // Try one refresh attempt if no token
+    try {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshData.session) {
+        throw {
+          error_code: 'E_UNAUTHORIZED',
+          message: 'Authentication required',
+          status: 401,
+        } as ApiError;
+      }
+      token = refreshData.session.access_token;
+    } catch (refreshError) {
+      throw {
+        error_code: 'E_UNAUTHORIZED',
+        message: 'Authentication required',
+        status: 401,
+      } as ApiError;
+    }
   }
 
   const url = `${API_BASE_URL}${path}`;

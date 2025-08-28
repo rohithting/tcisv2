@@ -405,47 +405,23 @@ export default function ChatConversationsPage() {
   }, []);
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Only handle conversation selection, don't interfere with chat state
-      if (!document.hidden && conversations.length > 0 && !selectedConversation && !hasInitializedFromUrl) {
-        setSelectedConversation(conversations[0].id);
-        setHasInitializedFromUrl(true);
-      }
-      
-      // Reset stuck streaming state when tab becomes visible
-      if (!document.hidden && isStreaming) {
-        setTimeout(() => {
-          if (isStreaming) {
-            setIsStreaming(false);
-            // Reset any streaming messages to error state
-            setMessages(prev => prev.map(msg => 
-              msg.status === 'streaming' 
-                ? { ...msg, status: 'error', content: 'Connection was interrupted. Please try again.' }
-                : msg
-            ));
-          }
-        }, 2000); // Wait 2 seconds to see if streaming recovers
-      }
-    };
-
+    // SIMPLIFIED: Only handle conversation selection on focus, let Supabase handle auth
     const handleFocus = () => {
-      // Only handle conversation selection, don't interfere with chat state
+      // Only handle conversation selection, don't interfere with auth or chat state
       if (conversations.length > 0 && !selectedConversation && !hasInitializedFromUrl) {
         setSelectedConversation(conversations[0].id);
         setHasInitializedFromUrl(true);
       }
     };
 
-    // Add event listeners
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Only listen for focus events, remove visibility change handler
     window.addEventListener('focus', handleFocus);
     
     // Cleanup function
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [conversations, selectedConversation, hasInitializedFromUrl, isStreaming]);
+  }, [conversations, selectedConversation, hasInitializedFromUrl]);
 
   // Listen for citation modal events
   useEffect(() => {
@@ -499,7 +475,7 @@ export default function ChatConversationsPage() {
             .in('conversation_id', convIds)
             .or(`query_text.ilike.%${term}%,question.ilike.%${term}%`);
           if (!queryErr && queryMatches) {
-            queryMatchesIds = Array.from(new Set(queryMatches.map(q => String(q.conversation_id))));
+            queryMatchesIds = Array.from(new Set(queryMatches.map((q: any) => String(q.conversation_id))));
           }
         }
 

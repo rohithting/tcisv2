@@ -41,16 +41,26 @@ export function getErrorMessage(error: any): string {
   }
 }
 
-// Basic API fetch function
+// Basic API fetch function with tab switching fix
 export async function apiFetch<T>(
   supabase: any,
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const { data: { session } } = await supabase.auth.getSession();
+  // Get current session - Supabase handles token refresh automatically
+  let { data: { session }, error } = await supabase.auth.getSession();
   
-  if (!session?.access_token) {
-    throw new Error('No authenticated session');
+  if (error || !session?.access_token) {
+    // Try refreshing session once if no valid token
+    try {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshData.session) {
+        throw new Error('No authenticated session');
+      }
+      session = refreshData.session;
+    } catch (refreshError) {
+      throw new Error('No authenticated session');
+    }
   }
 
   const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1${endpoint}`, {
@@ -62,6 +72,30 @@ export async function apiFetch<T>(
     },
   });
 
+  // If we get a 401, try refreshing token once and retry
+  if (response.status === 401) {
+    try {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (!refreshError && refreshData.session) {
+        // Retry with fresh token
+        const retryResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1${endpoint}`, {
+          ...options,
+          headers: {
+            'Authorization': `Bearer ${refreshData.session.access_token}`,
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+        });
+        
+        if (retryResponse.ok) {
+          return retryResponse.json();
+        }
+      }
+    } catch (retryError) {
+      // Fall through to original error handling
+    }
+  }
+
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`API call failed: ${response.status} ${error}`);
@@ -70,17 +104,27 @@ export async function apiFetch<T>(
   return response.json();
 }
 
-// Simple SSE function
+// Simple SSE function with tab switching fix
 export async function apiSSE(
   supabase: any,
   endpoint: string,
   request: any,
   handlers: any
 ): Promise<{ abort: () => void }> {
-  const { data: { session } } = await supabase.auth.getSession();
+  // Get current session - Supabase handles token refresh automatically
+  let { data: { session }, error } = await supabase.auth.getSession();
   
-  if (!session?.access_token) {
-    throw new Error('No authenticated session');
+  if (error || !session?.access_token) {
+    // Try refreshing session once if no valid token
+    try {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshData.session) {
+        throw new Error('No authenticated session');
+      }
+      session = refreshData.session;
+    } catch (refreshError) {
+      throw new Error('No authenticated session');
+    }
   }
 
   // Create EventSource-like connection using fetch with streaming
