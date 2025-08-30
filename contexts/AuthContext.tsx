@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 import { PlatformUser, PlatformRole } from '@/types/database';
@@ -12,7 +12,7 @@ interface AuthContextType {
   platformUser: PlatformUser | null;
   session: Session | null;
   loading: boolean;
-  supabase: any; // Add supabase client
+  supabase: any;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -24,7 +24,7 @@ interface AuthContextType {
   ensureValidToken: () => Promise<string | null>;
   validateSession: () => Promise<boolean>;
   ensureValidSession: () => Promise<boolean>;
-  lazyAuthenticate: () => Promise<boolean>; // NEW: Lazy authentication
+  lazyAuthenticate: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+  const isProcessingVisibilityChange = useRef(false);
 
   // Fetch platform user data and validate session
   const fetchPlatformUser = async (userId: string) => {
@@ -45,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (authError || !authUser.user || authUser.user.id !== userId) {
         console.error('Auth user validation failed in fetchPlatformUser');
-        // User doesn't exist in auth anymore - this will be handled by the calling function
         return null;
       }
 
@@ -58,12 +58,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('Error fetching platform user:', error);
         
-        // If user doesn't exist in platform_users but exists in auth
         if (error.code === 'PGRST116') {
           console.log('Platform user not found, creating manually...');
           
           try {
-            // Try direct insert first (simpler approach)
             const { error: insertError } = await supabase
               .from('platform_users')
               .insert({
@@ -78,7 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return null;
             }
 
-            // Return the newly created user data
             console.log('Platform user created successfully');
             return {
               id: userId,
@@ -108,22 +105,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Force clear session and redirect
   const forceClearSession = async () => {
-    console.log('🚨 Force clearing session - user does not exist');
+    console.log('Force clearing session - user does not exist');
     
     try {
-      // Sign out from Supabase
       await supabase.auth.signOut();
     } catch (error: any) {
       console.error('Error during signOut:', error);
     }
 
-    // Clear all local state
     setUser(null);
     setSession(null);
     setPlatformUser(null);
     setLoading(false);
 
-    // Clear browser storage
     try {
       localStorage.clear();
       sessionStorage.clear();
@@ -131,290 +125,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error clearing storage:', error);
     }
 
-    // Redirect to login page (use Next.js router instead of window.location)
     router.push('/auth/login');
   };
 
-  // Initialize auth state
-  useEffect(() => {
-    let isMounted = true;
-    let hasInitialized = false;
-
-    const initializeAuth = async () => {
-      if (hasInitialized || !isMounted) return;
-      hasInitialized = true;
-
-      try {
-        // Test database connection first
-        try {
-          const { data: testData, error: testError } = await supabase
-            .from('platform_users')
-            .select('count')
-            .limit(1);
-          
-          if (testError) {
-            console.error('Database connection test failed');
-          }
-        } catch (dbTestError) {
-          console.error('Database connection test error');
-        }
-
-        // Initializing auth state
-        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        if (sessionError) {
-          console.error('Session error during init - redirecting to login');
-          // Session error, redirect to login
-          if (isMounted) {
-            setLoading(false);
-            router.push('/auth/login');
-          }
-          return;
-        }
-        
-        if (initialSession?.user) {
-          // Initial session found - REMOVED aggressive validation
-          // Just set the session and user, validate later when needed
-          
-          if (isMounted) {
-            setUser(initialSession.user);
-            setSession(initialSession);
-          }
-          
-          // Try to fetch platform user, but don't fail if it doesn't work
-          try {
-            const platformUserData = await fetchPlatformUser(initialSession.user.id);
-            
-            if (!isMounted) return;
-            
-            if (platformUserData) {
-              if (isMounted) {
-                setPlatformUser(platformUserData);
-              }
-              
-              // Update last login only if platform user exists
-              try {
-                await supabase
-                  .from('platform_users')
-                  .update({ last_login_at: new Date().toISOString() })
-                  .eq('id', initialSession.user.id);
-              } catch (error: any) {
-                console.error('Error updating last login');
-              }
-            } else {
-              console.log('Platform user not found during init, but keeping session');
-            }
-          } catch (error: any) {
-            console.error('Error fetching platform user during init, but keeping session');
-          }
-        } else {
-          console.log('No initial session found - redirecting to login');
-          // No session found, redirect to login immediately
-          if (isMounted) {
-            setLoading(false);
-            router.push('/auth/login');
-          }
-        }
-      } catch (error: any) {
-        console.error('Error initializing auth');
-        // Error occurred, redirect to login
-        if (isMounted) {
-          setLoading(false);
-          router.push('/auth/login');
-        }
-      } finally {
-        // Always set loading to false at the end
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    // FIXED: Add timeout to prevent infinite loading
-    const initTimeout = setTimeout(() => {
-      if (isMounted && hasInitialized === false) {
-        console.log('⏰ Auth initialization timeout, forcing completion...');
-        hasInitialized = true;
-        setLoading(false);
-      }
-    }, 10000); // 10 second timeout
-
-    // No aggressive timeouts - let auth initialization complete naturally
-    initializeAuth();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(initTimeout);
-    };
-  }, []); // Empty dependency array - only run once
-
-  // Separate useEffect for auth state changes
-  useEffect(() => {
-
-    // Listen for auth changes (but ignore initial SIGNED_IN event during initialization)
-    let isInitialLoad = true;
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // Auth state change detected
-        
-        // Skip processing the initial SIGNED_IN event to avoid conflicts with initialization
-        if (event === 'SIGNED_IN' && isInitialLoad) {
-          // Skipping initial SIGNED_IN event (handled by initialization)
-          isInitialLoad = false;
-          return;
-        }
-        
-        isInitialLoad = false;
-        
-        // Handle different auth events
-        if (event === 'SIGNED_OUT') {
-          console.log('User signed out');
-          setSession(null);
-          setUser(null);
-          setPlatformUser(null);
-          return;
-        }
-
-        if (event === 'TOKEN_REFRESHED' && !session) {
-          console.log('Token refresh failed - session expired');
-          setSession(null);
-          setUser(null);
-          setPlatformUser(null);
-          
-          // Redirect if on protected route
-          const currentPath = window.location.pathname;
-          if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/unauthorized')) {
-            router.push('/auth/login');
-          }
-          return;
-        }
-
-        if (session?.user) {
-          // Processing auth session - REMOVED aggressive validation
-          // Just set the session and user, validate later when needed
-          
-          setSession(session);
-          setUser(session.user);
-          
-          // Try to fetch platform user, but don't fail if it doesn't work
-          try {
-            const platformUserData = await fetchPlatformUser(session.user.id);
-            
-            if (platformUserData) {
-              // Platform user validated successfully
-              setPlatformUser(platformUserData);
-            } else {
-              console.log('Platform user not found in state change, but keeping session');
-            }
-          } catch (error: any) {
-            console.error('Error fetching platform user in state change, but keeping session');
-          }
-        }
-      }
-    );
-
-    // DEBUG: Add comprehensive logging for tab switching debugging
-    const handleVisibilityChange = () => {
-      console.log(`👁️ [AUTH-CONTEXT] Tab visibility changed: ${document.hidden ? 'HIDDEN' : 'VISIBLE'}`);
-      
-      if (!document.hidden) {
-        // Tab became visible - check session state after a delay
-        setTimeout(async () => {
-          try {
-            const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-            console.log(`🔍 [AUTH-CONTEXT] Post-visibility session check:`, {
-              hasSession: !!currentSession,
-              hasToken: !!currentSession?.access_token,
-              error: error?.message,
-              userId: currentSession?.user?.id,
-              localUser: user?.id,
-              sessionMatches: currentSession?.user?.id === user?.id,
-              tokenPreview: currentSession?.access_token?.substring(0, 20) + '...'
-            });
-            
-            // Check if our local state is out of sync
-            if (currentSession && (!user || currentSession.user.id !== user.id)) {
-              console.log(`⚠️ [AUTH-CONTEXT] Session state mismatch detected after tab switch`);
-            }
-          } catch (error) {
-            console.error(`❌ [AUTH-CONTEXT] Error checking session after tab switch:`, error);
-          }
-        }, 1000);
-      }
-    };
-
-    // Add tab visibility listener for debugging
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // SIMPLIFIED: Let Supabase handle visibility changes, we just sync our state
-    // Supabase Auth-JS has built-in visibility change handling that manages token refresh
-    // We only need to ensure our local state stays in sync with Supabase's session state
-    
-    return () => {
-      subscription.unsubscribe();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [supabase.auth, router, user, session, platformUser]);
-
-  // SIMPLIFIED: Lightweight session state sync (let Supabase handle the heavy lifting)
-  useEffect(() => {
-    if (!user || !session) return;
-
-    // Simple state consistency check - only run when absolutely necessary
-    const syncSessionState = async () => {
-      try {
-        // Only check if our local state might be stale
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        if (error || !currentSession) {
-          // Let the auth state change handler deal with this
-          return;
-        }
-        
-        // Only update if there's an actual mismatch
-        if (currentSession.user.id !== user.id || 
-            currentSession.access_token !== session.access_token) {
-          console.log('🔄 Syncing session state with Supabase...');
-          setUser(currentSession.user);
-          setSession(currentSession);
-        }
-        
-        // Sync platform user if missing
-        if (!platformUser && currentSession.user.id) {
-          try {
-            const platformUserData = await fetchPlatformUser(currentSession.user.id);
-            if (platformUserData) {
-              setPlatformUser(platformUserData);
-            }
-          } catch (error) {
-            // Ignore platform user fetch errors - not critical
-          }
-        }
-        
-      } catch (error) {
-        // Ignore sync errors - let auth state changes handle issues
-      }
-    };
-
-    // Only run sync check every 10 minutes (much less aggressive)
-    const syncInterval = setInterval(syncSessionState, 10 * 60 * 1000);
-
-    return () => {
-      clearInterval(syncInterval);
-    };
-  }, [user, session, platformUser, supabase]);
-
-  // Lazy session validation - only validate when actually needed
+  // FIXED: Enhanced session validation function
   const validateSession = useCallback(async (): Promise<boolean> => {
     if (!session || !user) {
       return false;
     }
 
     try {
-      // FIXED: More robust session validation with fallback
+      console.log('Validating current session...');
+      
+      // Get fresh session data - don't rely on cached data
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
       
       if (error) {
@@ -433,13 +156,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       
-      // Check if token is expired
+      // Check if token is expired or expiring soon
       const now = Math.floor(Date.now() / 1000);
       const tokenExp = currentSession.expires_at || 0;
+      const timeUntilExpiry = tokenExp - now;
       
-      if (tokenExp <= now) {
+      console.log(`Token expires in ${timeUntilExpiry} seconds`);
+      
+      if (timeUntilExpiry <= 0) {
         console.log('Session validation failed - token expired');
         return false;
+      }
+      
+      // Update local session if it differs from server
+      if (currentSession.access_token !== session.access_token) {
+        console.log('Updating local session with server session');
+        setSession(currentSession);
+        setUser(currentSession.user);
       }
       
       return true;
@@ -449,11 +182,297 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session, user, supabase.auth]);
 
+  // FIXED: Enhanced lazyAuthenticate function
+  const lazyAuthenticate = async (): Promise<boolean> => {
+    console.log('lazyAuthenticate called - START');
+    
+    const timeoutPromise = new Promise<boolean>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('lazyAuthenticate timeout after 5 seconds'));
+      }, 5000);
+    });
+    
+    const authPromise = (async () => {
+      try {
+        console.log('Step 1: Getting current session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('Step 1 COMPLETE - Session check result:', { hasSession: !!session, error: !!error });
+        
+        if (error || !session) {
+          console.log('No session found during lazy auth - RETURNING FALSE');
+          return false;
+        }
+
+        console.log('Step 2: Checking token expiry...');
+        const now = Math.floor(Date.now() / 1000);
+        const tokenExp = session.expires_at || 0;
+        const timeUntilExpiry = tokenExp - now;
+        
+        console.log('Step 2 COMPLETE - Token expiry check:', { 
+          now, 
+          tokenExp, 
+          timeUntilExpiry, 
+          needsRefresh: timeUntilExpiry < 300 
+        });
+        
+        if (timeUntilExpiry < 300) { // 5 minutes buffer
+          console.log('Step 3: Token expiring soon, starting refresh...');
+          
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          console.log('Step 3 COMPLETE - Refresh result:', { 
+            hasRefreshData: !!refreshData?.session, 
+            hasError: !!refreshError,
+            errorMessage: refreshError?.message 
+          });
+          
+          if (refreshError || !refreshData.session) {
+            console.log('Token refresh failed during lazy auth - RETURNING FALSE');
+            return false;
+          }
+          
+          console.log('Step 4: Updating local state...');
+          setSession(refreshData.session);
+          setUser(refreshData.session.user);
+          
+          console.log('Step 4 COMPLETE - Token refreshed successfully during lazy auth - RETURNING TRUE');
+          return true;
+        }
+
+        console.log('Token is healthy, no refresh needed - RETURNING TRUE');
+        return true;
+      } catch (error: any) {
+        console.error('Error in lazyAuthenticate:', error);
+        return false;
+      } finally {
+        console.log('lazyAuthenticate called - END');
+      }
+    })();
+    
+    try {
+      const result = await Promise.race([authPromise, timeoutPromise]);
+      return result;
+    } catch (timeoutError) {
+      console.error('lazyAuthenticate TIMEOUT:', timeoutError);
+      return false;
+    }
+  };
+
+  // FIXED: Add visibility change handler for tab switching
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && user && session && !isProcessingVisibilityChange.current) {
+        console.log('Tab became visible, validating session...');
+        
+        try {
+          // Set flag to prevent unnecessary auth state updates during visibility change
+          isProcessingVisibilityChange.current = true;
+          
+          // Use lazyAuthenticate when tab becomes visible
+          const isValid = await lazyAuthenticate();
+          
+          if (!isValid) {
+            console.log('Session invalid after tab switch, clearing session...');
+            setSession(null);
+            setUser(null);
+            setPlatformUser(null);
+            router.push('/auth/login');
+          } else {
+            console.log('Session valid after tab switch');
+          }
+        } catch (error) {
+          console.error('Error validating session after tab switch:', error);
+          // Don't force logout on validation errors, just log them
+        } finally {
+          // Clear the flag after processing is complete
+          isProcessingVisibilityChange.current = false;
+        }
+      }
+    };
+
+    // Add event listener for tab switching
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, session, router, lazyAuthenticate]);
+
+  // Initialize auth state
+  useEffect(() => {
+    let isMounted = true;
+    let hasInitialized = false;
+
+    const initializeAuth = async () => {
+      if (hasInitialized || !isMounted) return;
+      hasInitialized = true;
+
+      try {
+        console.log('Initializing auth state...');
+        
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (sessionError) {
+          console.error('Session error during init - redirecting to login');
+          if (isMounted) {
+            setLoading(false);
+            router.push('/auth/login');
+          }
+          return;
+        }
+        
+        if (initialSession?.user) {
+          console.log('Initial session found, setting up auth state...');
+          
+          if (isMounted) {
+            setUser(initialSession.user);
+            setSession(initialSession);
+          }
+          
+          try {
+            const platformUserData = await fetchPlatformUser(initialSession.user.id);
+            
+            if (!isMounted) return;
+            
+            if (platformUserData) {
+              if (isMounted) {
+                setPlatformUser(platformUserData);
+              }
+              
+              try {
+                await supabase
+                  .from('platform_users')
+                  .update({ last_login_at: new Date().toISOString() })
+                  .eq('id', initialSession.user.id);
+              } catch (error: any) {
+                console.error('Error updating last login');
+              }
+            } else {
+              console.log('Platform user not found during init, but keeping session');
+            }
+          } catch (error: any) {
+            console.error('Error fetching platform user during init, but keeping session');
+          }
+        } else {
+          console.log('No initial session found - redirecting to login');
+          if (isMounted) {
+            setLoading(false);
+            router.push('/auth/login');
+          }
+        }
+      } catch (error: any) {
+        console.error('Error initializing auth');
+        if (isMounted) {
+          setLoading(false);
+          router.push('/auth/login');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const initTimeout = setTimeout(() => {
+      if (isMounted && hasInitialized === false) {
+        console.log('Auth initialization timeout, forcing completion...');
+        hasInitialized = true;
+        setLoading(false);
+      }
+    }, 10000);
+
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(initTimeout);
+    };
+  }, []);
+
+    // Listen for auth state changes
+  useEffect(() => {
+    let isInitialLoad = true;
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state change detected:', event);
+        
+        // Skip processing if this is a visibility change event
+        if (isProcessingVisibilityChange.current) {
+          console.log('Skipping auth state change - processing visibility change');
+          return;
+        }
+        
+        if (event === 'SIGNED_IN' && isInitialLoad) {
+          isInitialLoad = false;
+          return;
+        }
+        
+        isInitialLoad = false;
+        
+        if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+          setSession(null);
+          setUser(null);
+          setPlatformUser(null);
+          return;
+        }
+
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('Token refresh failed - session expired');
+          setSession(null);
+          setUser(null);
+          setPlatformUser(null);
+          
+          const currentPath = window.location.pathname;
+          if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/unauthorized')) {
+            router.push('/auth/login');
+          }
+          return;
+        }
+
+        if (session?.user) {
+          // Check if the session actually changed before updating state
+          const hasSessionChanged = !user || 
+            user.id !== session.user.id || 
+            session.access_token !== (session?.access_token || '') ||
+            session.refresh_token !== (session?.refresh_token || '') ||
+            session.expires_at !== (session?.expires_at || 0);
+          
+          if (hasSessionChanged) {
+            console.log('Processing auth session update - session changed');
+            setSession(session);
+            setUser(session.user);
+            
+            try {
+              const platformUserData = await fetchPlatformUser(session.user.id);
+              
+              if (platformUserData) {
+                console.log('Platform user validated successfully');
+                setPlatformUser(platformUserData);
+              } else {
+                console.log('Platform user not found in state change, but keeping session');
+              }
+            } catch (error: any) {
+              console.error('Error fetching platform user in state change, but keeping session');
+            }
+          } else {
+            console.log('Skipping auth session update - no actual changes detected');
+          }
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase.auth, router, user, session, isProcessingVisibilityChange]);
+
   // Expose validation function for components to use when needed
   const ensureValidSession = async (): Promise<boolean> => {
     const isValid = await validateSession();
     if (!isValid) {
-      // Session is invalid, clear it gracefully
       setSession(null);
       setUser(null);
       setPlatformUser(null);
@@ -596,119 +615,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // FIXED: Enhanced ensureValidToken function
   const ensureValidToken = async () => {
     try {
-      const { data, error } = await supabase.auth.getSession();
+      console.log('Ensuring valid token...');
+      
+      const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
         console.error('Error getting session for token refresh:', error);
         return null;
-
       }
-      return data.session?.access_token || null;
+
+      if (!session?.access_token) {
+        console.log('No access token found');
+        return null;
+      }
+
+      // Check if token is expiring soon (within 5 minutes)
+      const now = Math.floor(Date.now() / 1000);
+      const expiresAt = session.expires_at || 0;
+      const timeUntilExpiry = expiresAt - now;
+
+      if (timeUntilExpiry < 300) { // 5 minutes buffer
+        console.log('Token expiring soon, refreshing...');
+        
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError || !refreshData.session) {
+          console.error('Token refresh failed:', refreshError);
+          return null;
+        }
+
+        console.log('Token refreshed successfully');
+        setSession(refreshData.session);
+        setUser(refreshData.session.user);
+        
+        return refreshData.session.access_token;
+      }
+
+      return session.access_token;
     } catch (error: any) {
       console.error('Error in ensureValidToken:', error);
       return null;
     }
   };
 
-  // NEW: Lazy authentication - only validate when actually needed
-  const lazyAuthenticate = async (): Promise<boolean> => {
-    console.log('🔐 lazyAuthenticate called - START');
-    
-    // Add timeout to prevent hanging - reduced to 3 seconds for better UX
-    const timeoutPromise = new Promise<boolean>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error('lazyAuthenticate timeout after 3 seconds'));
-      }, 3000); // 3 second timeout for better UX
-    });
-    
-    const authPromise = (async () => {
-      try {
-        console.log('🔐 Step 1: Getting current session...');
-        // First try to get current session
-        const { data: { session }, error } = await supabase.auth.getSession();
-        console.log('🔐 Step 1 COMPLETE - Session check result:', { hasSession: !!session, error: !!error });
-        
-        if (error || !session) {
-          console.log('🔐 No session found during lazy auth - RETURNING FALSE');
-          return false;
-        }
-
-        console.log('🔐 Step 2: Checking token expiry...');
-        // Check if token is expired or about to expire (within 5 minutes)
-        const now = Math.floor(Date.now() / 1000);
-        const tokenExp = session.expires_at || 0;
-        const timeUntilExpiry = tokenExp - now;
-        
-        console.log('🔐 Step 2 COMPLETE - Token expiry check:', { 
-          now, 
-          tokenExp, 
-          timeUntilExpiry, 
-          needsRefresh: timeUntilExpiry < 300 
-        });
-        
-        if (timeUntilExpiry < 300) { // 5 minutes buffer for lazy auth
-          console.log('🔐 Step 3: Token expiring soon, starting refresh...');
-          
-          // Refresh the token
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          console.log('🔐 Step 3 COMPLETE - Refresh result:', { 
-            hasRefreshData: !!refreshData, 
-            hasError: !!refreshError,
-            errorMessage: refreshError?.message 
-          });
-          
-          if (refreshError || !refreshData.session) {
-            console.log('🔐 Token refresh failed during lazy auth - RETURNING FALSE');
-            return false;
-          }
-          
-          console.log('🔐 Step 4: Updating local state...');
-          // Update local state with refreshed session
-          setSession(refreshData.session);
-          setUser(refreshData.session.user);
-          
-          console.log('🔐 Step 4 COMPLETE - Token refreshed successfully during lazy auth - RETURNING TRUE');
-          return true;
-        }
-
-        console.log('🔐 Token is healthy, no refresh needed - RETURNING TRUE');
-        return true;
-      } catch (error: any) {
-        console.error('🔐 Error in lazyAuthenticate:', error);
-        return false;
-      } finally {
-        console.log('🔐 lazyAuthenticate called - END');
-      }
-    })();
-    
-    try {
-      // Race between timeout and actual auth
-      const result = await Promise.race([authPromise, timeoutPromise]);
-      return result;
-    } catch (timeoutError) {
-      console.error('🔐 lazyAuthenticate TIMEOUT:', timeoutError);
-      return false;
-    }
-  };
-
   // Cleanup and error recovery
   useEffect(() => {
-    // FIXED: Add cleanup mechanism to prevent memory leaks and state conflicts
     const cleanup = () => {
-      // Clear any pending timeouts or intervals
-      // This prevents state updates on unmounted components
+      // Clear any pending operations
     };
 
-    // Add error recovery mechanism
     const handleError = (error: Error) => {
       console.error('Auth context error:', error);
       
-      // Try to recover from auth state errors
       if (error.message.includes('auth') || error.message.includes('session')) {
         console.log('Attempting to recover from auth error...');
         
-        // Reset to a known good state
         setTimeout(async () => {
           try {
             const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -717,7 +680,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setSession(currentSession);
               setLoading(false);
             } else {
-              // No valid session, redirect to login
               setUser(null);
               setSession(null);
               setPlatformUser(null);
@@ -726,7 +688,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (recoveryError) {
             console.error('Error recovery failed:', recoveryError);
-            // Force redirect to login as last resort
             setUser(null);
             setSession(null);
             setPlatformUser(null);
@@ -737,14 +698,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Listen for unhandled errors
-    window.addEventListener('error', (event) => handleError(event.error));
-    window.addEventListener('unhandledrejection', (event) => handleError(new Error(event.reason)));
+    const errorHandler = (event: ErrorEvent) => handleError(event.error);
+    const rejectionHandler = (event: PromiseRejectionEvent) => handleError(new Error(event.reason));
+
+    window.addEventListener('error', errorHandler);
+    window.addEventListener('unhandledrejection', rejectionHandler);
 
     return () => {
       cleanup();
-      window.removeEventListener('error', (event) => handleError(event.error));
-      window.removeEventListener('unhandledrejection', (event) => handleError(new Error(event.reason)));
+      window.removeEventListener('error', errorHandler);
+      window.removeEventListener('unhandledrejection', rejectionHandler);
     };
   }, [supabase.auth, router]);
 
@@ -778,4 +741,3 @@ export function useAuth() {
   }
   return context;
 }
-
